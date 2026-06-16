@@ -14,11 +14,11 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=5" />
+    <link rel="stylesheet" href="styles.css?v=6" />
   </head>
   <body>
     <div class="announcement">
-      <span>Free shipping over A$59 / US$39 / EUR35</span>
+      <span>Free shipping on 8+ piece packs</span>
       <span>30-day returns</span>
       <span>12-month adhesive guarantee</span>
     </div>
@@ -114,11 +114,31 @@
                 <small>Choose by the number of sharp corners you need to cover.</small>
               </div>
               <div class="quantity-options" aria-label="Pack size selection">
-                <button type="button" data-qty="1" data-price="3.90" aria-pressed="false">1 pc</button>
-                <button class="popular" type="button" data-qty="4" data-price="9.90" aria-pressed="false">4 pcs</button>
-                <button type="button" data-qty="8" data-price="16.90" aria-pressed="false">8 pcs</button>
-                <button class="selected" type="button" data-qty="16" data-price="28.90" aria-pressed="true">16 pcs</button>
-                <button type="button" data-qty="20" data-price="32.90" aria-pressed="false">20 pcs</button>
+                <button type="button" data-qty="1" data-price="7" data-compare="10" data-shipping="Shipping calculated at checkout" aria-pressed="false">
+                  <span class="pack-size">1 pc</span>
+                  <span class="pack-price"><del>$10</del> $7</span>
+                  <span class="pack-shipping">Shipping extra</span>
+                </button>
+                <button class="popular" type="button" data-qty="4" data-price="28" data-compare="40" data-shipping="Shipping calculated at checkout" aria-pressed="false">
+                  <span class="pack-size">4 pcs</span>
+                  <span class="pack-price"><del>$40</del> $28</span>
+                  <span class="pack-shipping">Shipping extra</span>
+                </button>
+                <button type="button" data-qty="8" data-price="56" data-compare="80" data-shipping="Free shipping" aria-pressed="false">
+                  <span class="pack-size">8 pcs</span>
+                  <span class="pack-price"><del>$80</del> $56</span>
+                  <span class="pack-shipping free">Free shipping</span>
+                </button>
+                <button class="selected" type="button" data-qty="16" data-price="112" data-compare="160" data-shipping="Free shipping" aria-pressed="true">
+                  <span class="pack-size">16 pcs</span>
+                  <span class="pack-price"><del>$160</del> $112</span>
+                  <span class="pack-shipping free">Free shipping</span>
+                </button>
+                <button type="button" data-qty="20" data-price="140" data-compare="200" data-shipping="Free shipping" aria-pressed="false">
+                  <span class="pack-size">20 pcs</span>
+                  <span class="pack-price"><del>$200</del> $140</span>
+                  <span class="pack-shipping free">Free shipping</span>
+                </button>
               </div>
             </div>
 
@@ -129,7 +149,11 @@
               </div>
               <div>
                 <span>Estimated price</span>
-                <strong id="selected-price">A$28.90</strong>
+                <strong id="selected-price"><del>$160</del> $112</strong>
+              </div>
+              <div>
+                <span>Shipping</span>
+                <strong id="selected-shipping">Free shipping</strong>
               </div>
             </div>
 
@@ -293,6 +317,6 @@
         <a href="mailto:hello@softedge.example">Contact</a>
       </div>
     </footer>
-    <script src="script.js?v=5"></script>
+    <script src="script.js?v=6"></script>
   </body>
 </html>

@@ -402,11 +402,50 @@ img {
 }
 
 .quantity-options button {
-  min-height: 58px;
+  display: flex;
+  min-height: 76px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
   padding: 13px 10px;
-  font-size: 15px;
   font-weight: 800;
   text-align: center;
+}
+
+.pack-size,
+.pack-price,
+.pack-shipping {
+  display: block;
+}
+
+.pack-size {
+  font-size: 15px;
+}
+
+.pack-price {
+  color: var(--soft-dark);
+  font-size: 18px;
+  letter-spacing: -0.02em;
+}
+
+.pack-price del,
+.buy-summary del {
+  margin-right: 5px;
+  color: #8a948f;
+  font-size: 0.78em;
+  font-weight: 700;
+  text-decoration-thickness: 2px;
+}
+
+.pack-shipping {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.pack-shipping.free {
+  color: #2f6f58;
 }
 
 .quantity-options button.popular::before {
@@ -424,7 +463,7 @@ img {
 
 .buy-summary {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 12px;
   margin-top: 26px;
   padding-top: 18px;
@@ -446,6 +485,10 @@ img {
 .buy-summary strong {
   font-size: 20px;
   letter-spacing: -0.02em;
+}
+
+#selected-price {
+  color: var(--soft-dark);
 }
 
 .buy-benefits {

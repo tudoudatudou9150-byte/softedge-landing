@@ -2,6 +2,7 @@ const newsletterForm = document.querySelector("#newsletter-form");
 const quantityOptions = document.querySelectorAll(".quantity-options button");
 const selectedPlan = document.querySelector("#selected-plan");
 const selectedPrice = document.querySelector("#selected-price");
+const selectedShipping = document.querySelector("#selected-shipping");
 const addToCart = document.querySelector("#add-to-cart");
 const cartNote = document.querySelector("#cart-note");
 
@@ -16,19 +17,22 @@ quantityOptions.forEach((option) => {
 
     const quantity = option.dataset.qty;
     const price = option.dataset.price;
+    const compare = option.dataset.compare;
+    const shipping = option.dataset.shipping;
 
-    if (selectedPlan && selectedPrice && quantity && price) {
+    if (selectedPlan && selectedPrice && selectedShipping && quantity && price && compare && shipping) {
       const unit = quantity === "1" ? "pc" : "pcs";
       selectedPlan.textContent = `L-Shaped / ${quantity} ${unit}`;
-      selectedPrice.textContent = `A$${price}`;
+      selectedPrice.innerHTML = `<del>$${compare}</del> $${price}`;
+      selectedShipping.textContent = shipping;
     }
   });
 });
 
 addToCart?.addEventListener("click", () => {
-  if (!cartNote || !selectedPlan || !selectedPrice) return;
+  if (!cartNote || !selectedPlan || !selectedPrice || !selectedShipping) return;
 
-  cartNote.textContent = `Added ${selectedPlan.textContent} — ${selectedPrice.textContent}. Checkout can be connected in Shopify.`;
+  cartNote.textContent = `Added ${selectedPlan.textContent} — ${selectedPrice.textContent}, ${selectedShipping.textContent}. Checkout can be connected in Shopify.`;
 });
 
 newsletterForm?.addEventListener("submit", (event) => {
