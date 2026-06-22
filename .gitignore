@@ -2,3 +2,4 @@
 assets/implementation-*.png
 assets/*.png
 .DS_Store
+.superpowers/
