@@ -548,12 +548,35 @@ function renderRequests() {
 
 function renderHistory() {
   const historyRequests = state.requests.filter((request) => ["已完成", "归档历史"].includes(request.status));
+  const completedCount = historyRequests.filter((request) => request.status === "已完成").length;
+  const archivedCount = historyRequests.filter((request) => request.status === "归档历史").length;
+  const recentRequests = historyRequests.slice(-3).reverse();
 
   selectors.historyList.innerHTML = historyRequests.length
-    ? historyRequests
+    ? `
+      <div class="archive-summary">
+        <article>
+          <span>历史收录</span>
+          <strong>${historyRequests.length}</strong>
+        </article>
+        <article>
+          <span>本周完成</span>
+          <strong>${completedCount}</strong>
+        </article>
+        <article>
+          <span>归档历史</span>
+          <strong>${archivedCount}</strong>
+        </article>
+      </div>
+      <div class="history-preview-head">
+        <span>最近收录</span>
+        <a href="history.html">进入历史库</a>
+      </div>
+      <div class="history-preview-list">
+        ${recentRequests
         .map(
           (request) => `
-            <article class="history-card">
+            <button class="history-card history-card-button" data-history-detail="${request.id}" type="button">
               <header>
                 <div>
                   <h3>${request.name}</h3>
@@ -567,40 +590,71 @@ function renderHistory() {
                 <span>交付：${request.due}</span>
                 <span>${request.weekKey === state.week.currentWeekKey ? "本周完成，仍计入产能" : "历史归档，不占本周产能"}</span>
               </div>
-              <p>${request.note || "暂无备注"}</p>
-              <div class="card-meta">
-                <span class="tag">${request.channel || "未选择渠道"}</span>
-                <span class="tag">${request.requestTopic || "视频需求"}</span>
-                ${
-                  request.docUrl
-                    ? `<a class="tag tag-link" href="${request.docUrl}" target="_blank" rel="noreferrer">需求文档</a>`
-                    : ""
-                }
-                ${
-                  editing
-                    ? `<select data-request-status="${request.id}">
-                        ${["待评估", "已接收", "排期中", "暂缓", "排到下周", "已完成", "归档历史"]
-                          .map((status) => `<option ${status === request.status ? "selected" : ""}>${status}</option>`)
-                          .join("")}
-                      </select>`
-                    : ""
-                }
-              </div>
-            </article>
+            </button>
           `
         )
-        .join("")
+        .join("")}
+      </div>
+    `
     : '<article class="empty-card">暂无历史需求记录</article>';
 
-  document.querySelectorAll(".history-list [data-request-status]").forEach((select) => {
-    select.addEventListener("change", () => {
-      const request = state.requests.find((item) => item.id === select.dataset.requestStatus);
-      updateRequestStatus(request, select.value);
-      saveState();
-      render();
-      showToast("历史需求状态已更新");
+  document.querySelectorAll("[data-history-detail]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const request = state.requests.find((item) => item.id === button.dataset.historyDetail);
+      openRequestDetail(request);
     });
   });
+}
+
+function openRequestDetail(request) {
+  if (!request) return;
+  const dialog = ensureDetailDialog();
+  dialog.querySelector("#detail-title").textContent = request.name;
+  dialog.querySelector("#detail-body").innerHTML = `
+    <div class="detail-grid">
+      <span><strong>提交人</strong>${request.requester || "未署名"}</span>
+      <span><strong>渠道</strong>${request.channel || "未选择渠道"}</span>
+      <span><strong>需求内容</strong>${request.requestTopic || "视频需求"}</span>
+      <span><strong>内容类型</strong>${request.type || "未填写"}</span>
+      <span><strong>执行人</strong>${memberName(request.assigneeId)}</span>
+      <span><strong>需求数量</strong>${request.units || 0} 条</span>
+      <span><strong>期望交付</strong>${request.due || "未填写"}</span>
+      <span><strong>状态</strong>${request.status || "待评估"}</span>
+    </div>
+    <p class="detail-note">${request.note || "暂无备注"}</p>
+    ${
+      request.docUrl
+        ? `<a class="primary-button detail-link" href="${request.docUrl}" target="_blank" rel="noreferrer">打开需求文档</a>`
+        : '<span class="helper-text">暂无需求文档</span>'
+    }
+  `;
+  dialog.showModal();
+}
+
+function ensureDetailDialog() {
+  let dialog = document.querySelector("#request-detail-dialog");
+  if (dialog) return dialog;
+
+  dialog = document.createElement("dialog");
+  dialog.className = "modal wide-modal";
+  dialog.id = "request-detail-dialog";
+  dialog.innerHTML = `
+    <form method="dialog" class="modal-card">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">历史详情</p>
+          <h2 id="detail-title">需求详情</h2>
+        </div>
+        <button class="icon-button" value="cancel" aria-label="关闭" type="submit">×</button>
+      </div>
+      <div id="detail-body"></div>
+      <div class="modal-actions">
+        <button class="ghost-button" value="cancel" type="submit">关闭</button>
+      </div>
+    </form>
+  `;
+  document.body.appendChild(dialog);
+  return dialog;
 }
 
 function updateRequestStatus(request, status) {

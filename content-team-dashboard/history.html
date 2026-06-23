@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>历史需求记录</title>
+    <meta name="description" content="内容团队历史需求收录、筛选与详情查看。" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div>
+        <p class="eyebrow">内容团队历史库</p>
+        <h1>历史需求记录</h1>
+      </div>
+      <div class="header-actions">
+        <a class="ghost-button button-link" href="index.html">返回看板</a>
+      </div>
+    </header>
+
+    <main class="app-shell history-shell">
+      <section class="status-hero archive-hero">
+        <div>
+          <h2>团队做过的内容需求，统一收录在这里</h2>
+          <p class="status-copy">已完成与归档历史会沉淀到历史库，方便后续复盘产出、追溯需求文档和查看不同渠道的内容投入。</p>
+          <div class="archive-summary" id="archive-summary"></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">筛选</p>
+            <h2>查找历史需求</h2>
+          </div>
+          <span class="helper-text" id="result-count">加载中</span>
+        </div>
+        <div class="history-filters">
+          <label>
+            关键词
+            <input id="history-search" type="search" placeholder="搜索提交人、需求名、渠道、内容" />
+          </label>
+          <label>
+            渠道
+            <select id="history-channel">
+              <option value="">全部渠道</option>
+              <option value="亚马逊">亚马逊</option>
+              <option value="官网">官网</option>
+            </select>
+          </label>
+          <label>
+            执行人
+            <select id="history-assignee"></select>
+          </label>
+          <label>
+            状态
+            <select id="history-status">
+              <option value="">全部状态</option>
+              <option value="已完成">已完成</option>
+              <option value="归档历史">归档历史</option>
+            </select>
+          </label>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">全部收录</p>
+            <h2>历史需求列表</h2>
+          </div>
+        </div>
+        <div class="history-list history-list-full" id="history-results"></div>
+      </section>
+    </main>
+
+    <dialog class="modal wide-modal" id="request-detail-dialog">
+      <form method="dialog" class="modal-card">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">历史详情</p>
+            <h2 id="detail-title">需求详情</h2>
+          </div>
+          <button class="icon-button" value="cancel" aria-label="关闭" type="submit">×</button>
+        </div>
+        <div id="detail-body"></div>
+        <div class="modal-actions">
+          <button class="ghost-button" value="cancel" type="submit">关闭</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script src="history.js"></script>
+  </body>
+</html>
