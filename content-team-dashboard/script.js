@@ -270,11 +270,24 @@ function migrateState(parsed) {
   migrated.week = { ...defaultState.week, ...(parsed.week || {}) };
   migrated.members = parsed.members || defaultState.members;
   migrated.events = parsed.events || defaultState.events;
-  migrated.projects = parsed.projects || defaultState.projects;
-  migrated.requests = (parsed.requests || defaultState.requests).map((request) => ({
-    ...request,
-    weekKey: request.weekKey ?? (["已接收", "排期中", "已完成"].includes(request.status) ? migrated.week.currentWeekKey : ""),
-  }));
+  migrated.projects = (parsed.projects || defaultState.projects).map((project) => {
+    const ownerIds = project.ownerIds || (project.ownerId ? [project.ownerId] : []);
+    return {
+      ...project,
+      ownerIds,
+      ownerId: ownerIds[0] || "",
+    };
+  });
+  migrated.requests = (parsed.requests || defaultState.requests).map((request) => {
+    const assigneeIds = request.assigneeIds || (request.assigneeId ? [request.assigneeId] : []);
+    return {
+      ...request,
+      assigneeIds,
+      assigneeId: assigneeIds[0] || "",
+      urgency: getAutoUrgency(request),
+      weekKey: request.weekKey ?? (["已接收", "排期中", "已完成"].includes(request.status) ? migrated.week.currentWeekKey : ""),
+    };
+  });
   autoResetWeeklySchedule(migrated);
   return migrated;
 }
@@ -332,6 +345,29 @@ function memberName(id) {
   return state.members.find((member) => member.id === id)?.name || "未分配";
 }
 
+function getAssigneeIds(item) {
+  return item.assigneeIds || (item.assigneeId ? [item.assigneeId] : []);
+}
+
+function assigneeNames(item) {
+  const names = getAssigneeIds(item).map(memberName).filter((name) => name !== "未分配");
+  return names.length ? names.join("、") : "未分配";
+}
+
+function daysUntilDue(due) {
+  if (!due || !/^\d{4}-\d{2}-\d{2}$/.test(due)) return Number.POSITIVE_INFINITY;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const dueDate = new Date(`${due}T00:00:00`);
+  return Math.ceil((dueDate - today) / 86400000);
+}
+
+function getAutoUrgency(request) {
+  if (daysUntilDue(request.due) <= 1) return "紧急";
+  if (request.channel === "官网") return "优先";
+  return "普通";
+}
+
 function requestStatusToProjectStatus(status) {
   const statusMap = {
     已接收: "待开始",
@@ -349,6 +385,7 @@ function isRequestScheduled(request) {
 function getScheduledItems() {
   const manualProjects = state.projects.map((project) => ({
     ...project,
+    ownerIds: project.ownerIds || (project.ownerId ? [project.ownerId] : []),
     source: "手动项目",
   }));
   const syncedRequests = state.requests.filter(isRequestScheduled).map((request) => ({
@@ -356,10 +393,11 @@ function getScheduledItems() {
     name: request.name,
     type: `${request.channel || "未选择渠道"} · ${request.type}`,
     ownerId: request.assigneeId,
+    ownerIds: getAssigneeIds(request),
     units: request.units,
     status: requestStatusToProjectStatus(request.status),
     due: request.due,
-    priority: request.urgency === "紧急" ? "高" : "中",
+    priority: getAutoUrgency(request) === "紧急" ? "高" : getAutoUrgency(request) === "优先" ? "中高" : "中",
     risk: request.note || "来自需求池自动同步",
     source: "需求池同步",
   }));
@@ -369,8 +407,15 @@ function getScheduledItems() {
 
 function projectUnitsByMember(memberId) {
   return getScheduledItems()
-    .filter((project) => project.ownerId === memberId)
-    .reduce((total, project) => total + Number(project.units || 0), 0);
+    .filter((project) => {
+      const ownerIds = project.ownerIds || (project.ownerId ? [project.ownerId] : []);
+      return ownerIds.includes(memberId);
+    })
+    .reduce((total, project) => {
+      const ownerIds = project.ownerIds || (project.ownerId ? [project.ownerId] : []);
+      const splitBy = Math.max(ownerIds.length, 1);
+      return total + Number(project.units || 0) / splitBy;
+    }, 0);
 }
 
 function eventUnitsByMemberDay(memberId, day) {
@@ -477,10 +522,22 @@ function deleteMember(memberId) {
 
   state.members = state.members.filter((item) => item.id !== memberId);
   state.projects = state.projects.map((project) =>
-    project.ownerId === memberId ? { ...project, ownerId: "" } : project
+    (project.ownerIds || (project.ownerId ? [project.ownerId] : [])).includes(memberId)
+      ? {
+          ...project,
+          ownerIds: (project.ownerIds || (project.ownerId ? [project.ownerId] : [])).filter((id) => id !== memberId),
+          ownerId: (project.ownerIds || (project.ownerId ? [project.ownerId] : [])).filter((id) => id !== memberId)[0] || "",
+        }
+      : project
   );
   state.requests = state.requests.map((request) =>
-    request.assigneeId === memberId ? { ...request, assigneeId: "" } : request
+    getAssigneeIds(request).includes(memberId)
+      ? {
+          ...request,
+          assigneeIds: getAssigneeIds(request).filter((id) => id !== memberId),
+          assigneeId: getAssigneeIds(request).filter((id) => id !== memberId)[0] || "",
+        }
+      : request
   );
   state.events = state.events.filter((event) => event.memberId !== memberId);
 
@@ -629,7 +686,7 @@ function renderProjects() {
     <thead>
       <tr>
         <th>项目</th>
-        <th>负责人</th>
+        <th>制作人</th>
         <th>条数</th>
         <th>状态</th>
         <th>交付</th>
@@ -643,7 +700,7 @@ function renderProjects() {
           (project) => `
             <tr>
               <td><strong>${project.name}</strong><p class="cell-note">${project.type} · ${project.priority}优先级 · ${project.source}</p></td>
-              <td>${memberName(project.ownerId)}</td>
+              <td>${project.ownerIds ? project.ownerIds.map(memberName).join("、") || "未分配" : memberName(project.ownerId)}</td>
               <td>${project.units}</td>
               <td><span class="status-tag ${statusClassMap[project.status] || "status-info"}">${project.status}</span></td>
               <td>${project.due}</td>
@@ -698,7 +755,7 @@ function renderRequests() {
           </header>
           <div class="request-detail-grid">
             <span><strong>${request.units}</strong> 条需求</span>
-            <span>执行人：<strong>${memberName(request.assigneeId)}</strong></span>
+            <span>制作人：<strong>${assigneeNames(request)}</strong></span>
             <span>期望交付：<strong>${request.due}</strong></span>
             ${
               request.docUrl
@@ -708,14 +765,13 @@ function renderRequests() {
           </div>
           <p>${request.note}</p>
           <div class="card-meta">
-            <span class="tag">${request.urgency}</span>
+            <span class="tag">${getAutoUrgency(request)}</span>
             <span class="tag">${request.channel || "未选择渠道"}</span>
             ${
               editing
-                ? `<select data-request-assignee="${request.id}">
-                    <option value="">未分配</option>
+                ? `<select data-request-assignee="${request.id}" multiple size="${Math.min(Math.max(state.members.length, 2), 4)}">
                     ${state.members
-                      .map((member) => `<option value="${member.id}" ${member.id === request.assigneeId ? "selected" : ""}>${member.name}</option>`)
+                      .map((member) => `<option value="${member.id}" ${getAssigneeIds(request).includes(member.id) ? "selected" : ""}>${member.name}</option>`)
                       .join("")}
                   </select>
                   <select data-request-status="${request.id}">
@@ -746,10 +802,11 @@ function renderRequests() {
   document.querySelectorAll("[data-request-assignee]").forEach((select) => {
     select.addEventListener("change", () => {
       const request = state.requests.find((item) => item.id === select.dataset.requestAssignee);
-      request.assigneeId = select.value;
+      request.assigneeIds = Array.from(select.selectedOptions).map((option) => option.value);
+      request.assigneeId = request.assigneeIds[0] || "";
       saveState();
       render();
-      showToast("需求执行人已更新");
+      showToast("需求制作人已更新");
     });
   });
 
@@ -800,7 +857,7 @@ function renderHistory() {
               </header>
               <div class="history-meta">
                 <span>${request.units} 条</span>
-                <span>执行人：${memberName(request.assigneeId)}</span>
+                <span>制作人：${assigneeNames(request)}</span>
                 <span>交付：${request.due}</span>
                 <span>${request.weekKey === state.week.currentWeekKey ? "本周完成，仍计入产能" : "历史归档，不占本周产能"}</span>
               </div>
@@ -830,7 +887,7 @@ function openRequestDetail(request) {
       <span><strong>渠道</strong>${request.channel || "未选择渠道"}</span>
       <span><strong>需求内容</strong>${request.requestTopic || "视频需求"}</span>
       <span><strong>内容类型</strong>${request.type || "未填写"}</span>
-      <span><strong>执行人</strong>${memberName(request.assigneeId)}</span>
+      <span><strong>制作人</strong>${assigneeNames(request)}</span>
       <span><strong>需求数量</strong>${request.units || 0} 条</span>
       <span><strong>期望交付</strong>${request.due || "未填写"}</span>
       <span><strong>状态</strong>${request.status || "待评估"}</span>
@@ -1029,7 +1086,7 @@ function openEntry(type, defaults = {}) {
       fields: [
         ["name", "项目名称", "text"],
         ["type", "内容类型", "text"],
-        ["ownerId", "负责人", "member"],
+        ["ownerIds", "制作人", "memberMulti"],
         ["units", "内容条数", "number"],
         ["status", "状态", "projectStatus"],
         ["due", "预计交付", "text"],
@@ -1039,18 +1096,15 @@ function openEntry(type, defaults = {}) {
     },
     request: {
       kicker: "需求池",
-      title: "新增需求",
+      title: "下需求",
       fields: [
         ["requester", "你的名字", "text"],
         ["channel", "使用渠道", "channel"],
         ["requestTopic", "需求内容", "text"],
         ["type", "内容类型", "requestType"],
-        ["assigneeId", "执行人", "member"],
         ["units", "需求数量", "number"],
         ["docUrl", "需求文档链接", "url", "full"],
-        ["due", "期望交付日期", "text"],
-        ["urgency", "紧急程度", "text"],
-        ["status", "状态", "requestStatus"],
+        ["due", "期望交付日期", "date"],
         ["note", "备注", "text", "full"],
       ],
     },
@@ -1082,6 +1136,17 @@ function renderField([name, label, type, width]) {
       <label class="${className}">${label}
         <select name="${name}">
           ${state.members.map((member) => `<option value="${member.id}" ${member.id === defaultValue ? "selected" : ""}>${member.name}</option>`).join("")}
+        </select>
+      </label>
+    `;
+  }
+
+  if (type === "memberMulti") {
+    const values = Array.isArray(defaultValue) ? defaultValue : defaultValue ? [defaultValue] : [];
+    return `
+      <label class="${className}">${label}
+        <select name="${name}" multiple size="${Math.min(Math.max(state.members.length, 2), 5)}">
+          ${state.members.map((member) => `<option value="${member.id}" ${values.includes(member.id) ? "selected" : ""}>${member.name}</option>`).join("")}
         </select>
       </label>
     `;
@@ -1145,8 +1210,17 @@ function saveEntry() {
     entry.requester = entry.requester.trim() || "未署名";
     entry.requestTopic = entry.requestTopic.trim() || entry.type || "视频";
     entry.name = `${entry.requester}${entry.channel}${entry.requestTopic}需求`;
+    entry.assigneeIds = [];
+    entry.assigneeId = "";
+    entry.status = "待评估";
+    entry.urgency = getAutoUrgency(entry);
     entry.weekKey = ["已接收", "排期中", "已完成"].includes(entry.status) ? state.week.currentWeekKey : "";
     if (entry.status === "归档历史") entry.archivedAt = state.week.currentWeekKey;
+  }
+
+  if (activeEntryType === "project") {
+    entry.ownerIds = formData.getAll("ownerIds");
+    entry.ownerId = entry.ownerIds[0] || "";
   }
 
   if (activeEntryType === "project") state.projects.push(entry);

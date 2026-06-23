@@ -70,13 +70,22 @@ function memberName(id) {
   return historyState.members.find((member) => member.id === id)?.name || "未分配";
 }
 
+function getAssigneeIds(item) {
+  return item.assigneeIds || (item.assigneeId ? [item.assigneeId] : []);
+}
+
+function assigneeNames(item) {
+  const names = getAssigneeIds(item).map(memberName).filter((name) => name !== "未分配");
+  return names.length ? names.join("、") : "未分配";
+}
+
 function getHistoryRequests() {
   return historyState.requests.filter((request) => ["已完成", "归档历史"].includes(request.status));
 }
 
 function renderAssigneeFilter() {
   historySelectors.assignee.innerHTML = `
-    <option value="">全部执行人</option>
+    <option value="">全部制作人</option>
     ${historyState.members.map((member) => `<option value="${member.id}">${member.name}</option>`).join("")}
   `;
 }
@@ -89,7 +98,7 @@ function getFilteredRequests() {
 
   return getHistoryRequests()
     .filter((request) => !channel || request.channel === channel)
-    .filter((request) => !assignee || request.assigneeId === assignee)
+    .filter((request) => !assignee || getAssigneeIds(request).includes(assignee))
     .filter((request) => !status || request.status === status)
     .filter((request) => {
       if (!keyword) return true;
@@ -100,7 +109,7 @@ function getFilteredRequests() {
         request.requestTopic,
         request.type,
         request.note,
-        memberName(request.assigneeId),
+        assigneeNames(request),
       ]
         .filter(Boolean)
         .join(" ")
@@ -154,7 +163,7 @@ function renderResults() {
               </header>
               <div class="history-meta">
                 <span>${request.units || 0} 条</span>
-                <span>执行人：${memberName(request.assigneeId)}</span>
+                <span>制作人：${assigneeNames(request)}</span>
                 <span>交付：${request.due || "未填写"}</span>
                 <span>${request.weekKey === historyState.currentWeekKey ? "本周完成" : "历史归档"}</span>
               </div>
@@ -182,7 +191,7 @@ function openRequestDetail(request) {
       <span><strong>渠道</strong>${request.channel || "未选择渠道"}</span>
       <span><strong>需求内容</strong>${request.requestTopic || "视频需求"}</span>
       <span><strong>内容类型</strong>${request.type || "未填写"}</span>
-      <span><strong>执行人</strong>${memberName(request.assigneeId)}</span>
+      <span><strong>制作人</strong>${assigneeNames(request)}</span>
       <span><strong>需求数量</strong>${request.units || 0} 条</span>
       <span><strong>期望交付</strong>${request.due || "未填写"}</span>
       <span><strong>状态</strong>${request.status || "待评估"}</span>
