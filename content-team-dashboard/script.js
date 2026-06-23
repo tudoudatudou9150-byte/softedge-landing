@@ -126,7 +126,6 @@ const selectors = {
   modePill: document.querySelector("#mode-pill"),
   editToggle: document.querySelector("#edit-toggle"),
   quickAdjust: document.querySelector("#quick-adjust"),
-  resetDemo: document.querySelector("#reset-demo"),
   statusTitle: document.querySelector("#status-title"),
   statusCopy: document.querySelector("#status-copy"),
   capacityProgress: document.querySelector("#capacity-progress"),
@@ -134,6 +133,7 @@ const selectors = {
   scheduleTable: document.querySelector("#schedule-table"),
   projectTable: document.querySelector("#project-table"),
   requestList: document.querySelector("#request-list"),
+  internalBoard: document.querySelector("#internal-board"),
   historyList: document.querySelector("#history-list"),
   memberList: document.querySelector("#member-list"),
   newMemberName: document.querySelector("#new-member-name"),
@@ -144,6 +144,7 @@ const selectors = {
   dailyStandard: document.querySelector("#daily-standard"),
   saveWeek: document.querySelector("#save-week"),
   addProject: document.querySelector("#add-project"),
+  addInternalProject: document.querySelector("#add-internal-project"),
   addRequest: document.querySelector("#add-request"),
   addEvent: document.querySelector("#add-event"),
   passwordDialog: document.querySelector("#password-dialog"),
@@ -362,6 +363,18 @@ function daysUntilDue(due) {
   return Math.ceil((dueDate - today) / 86400000);
 }
 
+function getWeekdayDate(day) {
+  const date = new Date(`${state.week.currentWeekKey || CURRENT_WEEK_KEY}T00:00:00`);
+  date.setDate(date.getDate() + Number(day || 1) - 1);
+  return date;
+}
+
+function isPastWorkday(day) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return getWeekdayDate(day) < today;
+}
+
 function getAutoUrgency(request) {
   if (daysUntilDue(request.due) <= 1) return "紧急";
   if (request.channel === "官网") return "优先";
@@ -462,6 +475,7 @@ function render() {
   renderMetrics();
   renderSchedule();
   renderProjects();
+  renderInternalBoard();
   renderRequests();
   renderEvents();
   renderHistory();
@@ -634,7 +648,12 @@ function renderMetrics() {
 
 function renderSchedule() {
   const days = dayLabels.slice(0, state.week.workdays);
-  const head = `<thead><tr><th>成员</th>${days.map((day) => `<th>${day}</th>`).join("")}</tr></thead>`;
+  const head = `<thead><tr><th>成员</th>${days
+    .map((day, index) => {
+      const dayNumber = index + 1;
+      return `<th class="${isPastWorkday(dayNumber) ? "past-day" : ""}">${day}${isPastWorkday(dayNumber) ? '<span class="past-label">已过</span>' : ""}</th>`;
+    })
+    .join("")}</tr></thead>`;
   const rows = state.members
     .map((member) => {
       const memberProjects = projectUnitsByMember(member.id);
@@ -645,8 +664,9 @@ function renderSchedule() {
           const eventUnits = eventUnitsByMemberDay(member.id, day);
           const remaining = Math.max(state.week.dailyStandard - eventUnits - dailyProjectShare, 0);
           const notes = eventNotes(member.id, day) || "无特殊占用";
+          const pastClass = isPastWorkday(day) ? " past-day" : "";
           return `
-            <td class="schedule-cell">
+            <td class="schedule-cell${pastClass}">
               <div class="cell-main">
                 <span>余 ${remaining} 条</span>
                 <span class="status-tag ${remaining > 1 ? "status-good" : remaining === 1 ? "status-tight" : "status-full"}">
@@ -726,6 +746,57 @@ function renderProjects() {
       deleteProject(button.dataset.deleteProject);
     });
   });
+}
+
+function renderInternalBoard() {
+  if (!selectors.internalBoard) return;
+  const manualProjects = state.projects;
+  const unassignedProjects = manualProjects.filter((project) => {
+    const ownerIds = project.ownerIds || (project.ownerId ? [project.ownerId] : []);
+    return ownerIds.length === 0;
+  });
+
+  const memberColumns = state.members.map((member) => {
+    const memberProjects = manualProjects.filter((project) => {
+      const ownerIds = project.ownerIds || (project.ownerId ? [project.ownerId] : []);
+      return ownerIds.includes(member.id);
+    });
+
+    return renderInternalColumn(member.name, memberProjects);
+  });
+
+  selectors.internalBoard.innerHTML = [
+    ...memberColumns,
+    renderInternalColumn("未分配", unassignedProjects),
+  ].join("");
+}
+
+function renderInternalColumn(title, projects) {
+  return `
+    <article class="internal-column">
+      <header>
+        <strong>${title}</strong>
+        <span>${projects.length} 项</span>
+      </header>
+      <div class="internal-task-list">
+        ${
+          projects.length
+            ? projects
+                .map(
+                  (project) => `
+                    <article class="internal-task">
+                      <h3>${project.name}</h3>
+                      <p>${project.type || "自主安排"} · ${project.units || 0} 条 · ${project.due || "未填写交付"}</p>
+                      <span class="status-tag status-info">${project.status || "待开始"}</span>
+                    </article>
+                  `
+                )
+                .join("")
+            : '<p class="empty-slot">暂无安排</p>'
+        }
+      </div>
+    </article>
+  `;
 }
 
 function renderRequests() {
@@ -945,7 +1016,12 @@ function renderEvents() {
   const days = dayLabels.slice(0, state.week.workdays);
   const header = `
     <div class="calendar-corner">成员</div>
-    ${days.map((day) => `<div class="calendar-day">${day}</div>`).join("")}
+    ${days
+      .map((day, index) => {
+        const dayNumber = index + 1;
+        return `<div class="calendar-day ${isPastWorkday(dayNumber) ? "past-day" : ""}">${day}${isPastWorkday(dayNumber) ? '<span class="past-label">已过</span>' : ""}</div>`;
+      })
+      .join("")}
   `;
   const rows = state.members
     .map((member) => {
@@ -954,7 +1030,7 @@ function renderEvents() {
           const dayNumber = index + 1;
           const events = state.events.filter((event) => event.memberId === member.id && Number(event.day) === dayNumber);
           return `
-            <div class="calendar-cell" data-member="${member.id}" data-day="${dayNumber}">
+            <div class="calendar-cell ${isPastWorkday(dayNumber) ? "past-day" : ""}" data-member="${member.id}" data-day="${dayNumber}">
               <div class="calendar-events">
                 ${
                   events.length
@@ -1165,7 +1241,7 @@ function renderField([name, label, type, width]) {
   }
 
   if (type === "requestType") {
-    return renderSelect(name, label, ["轻量视频", "新拍摄", "混剪", "直播切片", "脚本需求"], className);
+    return renderSelect(name, label, ["旧方向新拍摄", "新方向新拍摄", "横屏独立视频", "混剪"], className);
   }
 
   if (type === "eventType") {
@@ -1302,15 +1378,14 @@ selectors.quickSaveAll.addEventListener("click", () => {
   showToast("已更新工作日并新增日程");
 });
 
-selectors.resetDemo.addEventListener("click", () => {
-  localStorage.removeItem(STORAGE_KEY);
-  state = structuredClone(defaultState);
-  saveState();
-  setEditing(false);
-  showToast("样例数据已重置");
-});
-
 selectors.addProject.addEventListener("click", () => openEntry("project"));
+selectors.addInternalProject.addEventListener("click", () =>
+  openEntry("project", {
+    type: "自主安排",
+    status: "待开始",
+    priority: "中",
+  })
+);
 selectors.addRequest.addEventListener("click", () => openEntry("request"));
 selectors.addEvent.addEventListener("click", () => openEntry("event"));
 selectors.addMember.addEventListener("click", addMember);
