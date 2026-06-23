@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>内容团队排期与产能看板</title>
+    <meta
+      name="description"
+      content="内容团队本周工作安排、产出规划、成员排期与需求承接情况看板。"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div>
+        <p class="eyebrow">内容团队工作台</p>
+        <h1>本周排期与产能看板</h1>
+      </div>
+      <div class="header-actions">
+        <span class="mode-pill" id="mode-pill">只读模式</span>
+        <button class="secondary-button" id="quick-adjust" type="button">快捷调整</button>
+        <button class="ghost-button" id="reset-demo" type="button">重置样例</button>
+        <button class="primary-button" id="edit-toggle" type="button">进入编辑</button>
+      </div>
+    </header>
+
+    <main class="app-shell">
+      <section class="status-hero" aria-labelledby="status-title">
+        <div>
+          <p class="eyebrow">本周状态</p>
+          <h2 id="status-title">加载中</h2>
+          <p class="status-copy" id="status-copy"></p>
+          <div class="capacity-progress" id="capacity-progress"></div>
+        </div>
+      </section>
+
+      <section class="toolbar edit-only" id="week-editor" aria-label="本周设置">
+        <label>
+          大小周
+          <select id="week-type">
+            <option value="big">大周（工作5天，休息2天）</option>
+            <option value="small">小周（工作6天，休息1天）</option>
+          </select>
+        </label>
+        <label>
+          工作日
+          <input id="workdays" type="number" min="1" max="7" />
+        </label>
+        <label>
+          每人每日标准条数
+          <input id="daily-standard" type="number" min="1" max="12" />
+        </label>
+        <button class="primary-button" id="save-week" type="button">更新设置</button>
+      </section>
+
+      <section class="metric-grid" id="metric-grid" aria-label="产能概览"></section>
+
+      <section class="panel">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">成员排期</p>
+            <h2>每天标准产能、占用与剩余</h2>
+          </div>
+          <span class="helper-text">按条数计算，不按小时计算</span>
+        </div>
+        <div class="table-wrap">
+          <table class="schedule-table" id="schedule-table"></table>
+        </div>
+      </section>
+
+      <section class="two-column">
+        <article class="panel">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">项目跟进</p>
+              <h2>本周已排内容</h2>
+            </div>
+            <button class="secondary-button edit-only" id="add-project" type="button">
+              新增项目
+            </button>
+          </div>
+          <div class="table-wrap">
+            <table id="project-table"></table>
+          </div>
+        </article>
+
+        <article class="panel">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">需求池</p>
+              <h2>新需求评估与排期</h2>
+            </div>
+            <button class="secondary-button edit-only" id="add-request" type="button">
+              新增需求
+            </button>
+          </div>
+          <div class="request-list" id="request-list"></div>
+        </article>
+      </section>
+
+      <section class="panel">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">占用扣减</p>
+            <h2>本周成员日程</h2>
+          </div>
+          <button class="secondary-button edit-only" id="add-event" type="button">
+            新增占用
+          </button>
+        </div>
+        <div class="calendar-wrap">
+          <div class="event-calendar" id="event-grid"></div>
+        </div>
+      </section>
+    </main>
+
+    <dialog class="modal" id="password-dialog">
+      <form method="dialog" class="modal-card" id="password-form">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">编辑权限</p>
+            <h2>输入团队编辑密码</h2>
+          </div>
+          <button class="icon-button" value="cancel" aria-label="关闭" type="submit">×</button>
+        </div>
+        <label>
+          编辑密码
+          <input id="edit-password" type="password" autocomplete="current-password" />
+        </label>
+        <p class="form-error" id="password-error" aria-live="polite"></p>
+        <div class="modal-actions">
+          <button class="ghost-button" value="cancel" type="submit">取消</button>
+          <button class="primary-button" id="confirm-password" type="button">确认进入</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="modal" id="entry-dialog">
+      <form method="dialog" class="modal-card" id="entry-form">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow" id="entry-kicker">编辑</p>
+            <h2 id="entry-title">新增内容</h2>
+          </div>
+          <button class="icon-button" value="cancel" aria-label="关闭" type="submit">×</button>
+        </div>
+        <div class="form-grid" id="entry-fields"></div>
+        <div class="modal-actions">
+          <button class="ghost-button" value="cancel" type="submit">取消</button>
+          <button class="primary-button" id="save-entry" type="button">保存</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="modal wide-modal" id="quick-dialog">
+      <form method="dialog" class="modal-card" id="quick-form">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">快捷调整</p>
+            <h2>修改本周设置与成员日程</h2>
+          </div>
+          <button class="icon-button" value="cancel" aria-label="关闭" type="submit">×</button>
+        </div>
+
+        <div class="quick-layout">
+          <section class="quick-block">
+            <p class="eyebrow">工作日 / 节假日</p>
+            <div class="form-grid">
+              <label>
+                大小周
+                <select id="quick-week-type">
+                  <option value="big">大周（工作5天，休息2天）</option>
+                  <option value="small">小周（工作6天，休息1天）</option>
+                </select>
+              </label>
+              <label>
+                本周工作日
+                <input id="quick-workdays" type="number" min="1" max="7" />
+              </label>
+              <label>
+                每人每日标准条数
+                <input id="quick-daily-standard" type="number" min="1" max="12" />
+              </label>
+              <label>
+                调整备注
+                <input id="quick-week-note" type="text" placeholder="例如：周三端午放假，周六调休" />
+              </label>
+            </div>
+          </section>
+
+          <section class="quick-block">
+            <p class="eyebrow">快速新增日程</p>
+            <div class="form-grid" id="quick-event-fields"></div>
+          </section>
+        </div>
+
+        <div class="modal-actions">
+          <button class="ghost-button" value="cancel" type="submit">取消</button>
+          <button class="secondary-button" id="quick-save-week" type="button">只更新工作日</button>
+          <button class="primary-button" id="quick-save-all" type="button">保存并新增日程</button>
+        </div>
+      </form>
+    </dialog>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="script.js"></script>
+  </body>
+</html>
