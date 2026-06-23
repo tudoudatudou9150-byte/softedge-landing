@@ -54,6 +54,26 @@
         <button class="primary-button" id="save-week" type="button">更新设置</button>
       </section>
 
+      <section class="panel edit-only management-panel" id="management-panel">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">编辑管理</p>
+            <h2>团队人员维护</h2>
+          </div>
+          <span class="helper-text">删除成员后，相关项目和需求会变为未分配</span>
+        </div>
+        <div class="member-manager">
+          <div class="member-list" id="member-list"></div>
+          <label>
+            新成员姓名
+            <div class="inline-form">
+              <input id="new-member-name" type="text" placeholder="输入姓名" />
+              <button class="primary-button" id="add-member" type="button">新增成员</button>
+            </div>
+          </label>
+        </div>
+      </section>
+
       <section class="metric-grid" id="metric-grid" aria-label="产能概览"></section>
 
       <section class="panel">

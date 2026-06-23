@@ -135,6 +135,9 @@ const selectors = {
   projectTable: document.querySelector("#project-table"),
   requestList: document.querySelector("#request-list"),
   historyList: document.querySelector("#history-list"),
+  memberList: document.querySelector("#member-list"),
+  newMemberName: document.querySelector("#new-member-name"),
+  addMember: document.querySelector("#add-member"),
   eventGrid: document.querySelector("#event-grid"),
   weekType: document.querySelector("#week-type"),
   workdays: document.querySelector("#workdays"),
@@ -409,6 +412,7 @@ function getCapacity() {
 
 function render() {
   renderWeekEditor();
+  renderMembers();
   renderHero();
   renderMetrics();
   renderSchedule();
@@ -422,6 +426,89 @@ function renderWeekEditor() {
   selectors.weekType.value = state.week.type;
   selectors.workdays.value = state.week.workdays;
   selectors.dailyStandard.value = state.week.dailyStandard;
+}
+
+function renderMembers() {
+  if (!selectors.memberList) return;
+  selectors.memberList.innerHTML = state.members
+    .map(
+      (member) => `
+        <article class="member-chip">
+          <strong>${member.name}</strong>
+          <button class="danger-button" data-delete-member="${member.id}" type="button">删除</button>
+        </article>
+      `
+    )
+    .join("");
+
+  document.querySelectorAll("[data-delete-member]").forEach((button) => {
+    button.addEventListener("click", () => {
+      deleteMember(button.dataset.deleteMember);
+    });
+  });
+}
+
+function addMember() {
+  const name = selectors.newMemberName.value.trim();
+  if (!name) {
+    showToast("请先输入成员姓名");
+    return;
+  }
+
+  if (state.members.some((member) => member.name === name)) {
+    showToast("成员已存在");
+    return;
+  }
+
+  state.members.push({
+    id: `member-${Date.now()}`,
+    name,
+  });
+  selectors.newMemberName.value = "";
+  saveState();
+  render();
+  showToast("成员已新增");
+}
+
+function deleteMember(memberId) {
+  const member = state.members.find((item) => item.id === memberId);
+  if (!member) return;
+  if (!window.confirm(`确认删除成员「${member.name}」吗？相关项目和需求会变为未分配，TA的日程占用会被移除。`)) return;
+
+  state.members = state.members.filter((item) => item.id !== memberId);
+  state.projects = state.projects.map((project) =>
+    project.ownerId === memberId ? { ...project, ownerId: "" } : project
+  );
+  state.requests = state.requests.map((request) =>
+    request.assigneeId === memberId ? { ...request, assigneeId: "" } : request
+  );
+  state.events = state.events.filter((event) => event.memberId !== memberId);
+
+  saveState();
+  render();
+  showToast(`${member.name} 已删除，相关内容已改为未分配`);
+}
+
+function deleteProject(projectId) {
+  const project = state.projects.find((item) => item.id === projectId);
+  if (!project) return;
+  if (!window.confirm(`确认删除项目「${project.name}」吗？`)) return;
+
+  state.projects = state.projects.filter((item) => item.id !== projectId);
+  saveState();
+  render();
+  showToast("项目已删除");
+}
+
+function deleteRequest(requestId) {
+  const request = state.requests.find((item) => item.id === requestId);
+  if (!request) return;
+  if (!window.confirm(`确认删除需求「${request.name}」吗？这条需求也会从本周已排内容中移除。`)) return;
+
+  state.requests = state.requests.filter((item) => item.id !== requestId);
+  saveState();
+  render();
+  showToast("需求已删除");
 }
 
 function renderHero() {
@@ -536,6 +623,7 @@ function renderProjects() {
         <th>状态</th>
         <th>交付</th>
         <th>风险 / 依赖</th>
+        ${editing ? "<th>操作</th>" : ""}
       </tr>
     </thead>
     <tbody>
@@ -549,12 +637,27 @@ function renderProjects() {
               <td><span class="status-tag ${statusClassMap[project.status] || "status-info"}">${project.status}</span></td>
               <td>${project.due}</td>
               <td>${project.risk}</td>
+              ${
+                editing
+                  ? `<td>${
+                      project.source === "手动项目"
+                        ? `<button class="danger-button" data-delete-project="${project.id}" type="button">删除</button>`
+                        : '<span class="cell-note">在需求池维护</span>'
+                    }</td>`
+                  : ""
+              }
             </tr>
           `
         )
         .join("")}
     </tbody>
   `;
+
+  document.querySelectorAll("[data-delete-project]").forEach((button) => {
+    button.addEventListener("click", () => {
+      deleteProject(button.dataset.deleteProject);
+    });
+  });
 }
 
 function renderRequests() {
@@ -608,7 +711,8 @@ function renderRequests() {
                     ${["待评估", "已接收", "排期中", "暂缓", "排到下周", "已完成", "归档历史"]
                       .map((status) => `<option ${status === request.status ? "selected" : ""}>${status}</option>`)
                       .join("")}
-                  </select>`
+                  </select>
+                  <button class="danger-button" data-delete-request="${request.id}" type="button">删除需求</button>`
                 : ""
             }
           </div>
@@ -635,6 +739,12 @@ function renderRequests() {
       saveState();
       render();
       showToast("需求执行人已更新");
+    });
+  });
+
+  document.querySelectorAll("[data-delete-request]").forEach((button) => {
+    button.addEventListener("click", () => {
+      deleteRequest(button.dataset.deleteRequest);
     });
   });
 }
@@ -1107,6 +1217,13 @@ selectors.resetDemo.addEventListener("click", () => {
 selectors.addProject.addEventListener("click", () => openEntry("project"));
 selectors.addRequest.addEventListener("click", () => openEntry("request"));
 selectors.addEvent.addEventListener("click", () => openEntry("event"));
+selectors.addMember.addEventListener("click", addMember);
+selectors.newMemberName.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    addMember();
+  }
+});
 selectors.saveEntry.addEventListener("click", saveEntry);
 
 render();

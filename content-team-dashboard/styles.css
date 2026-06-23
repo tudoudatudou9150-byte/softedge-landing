@@ -154,13 +154,11 @@ h3 {
 }
 
 .status-hero h2 {
-  max-width: 900px;
   font-size: 38px;
   line-height: 1.18;
 }
 
 .status-copy {
-  max-width: 920px;
   margin: 12px 0 0;
   color: var(--muted);
   font-size: 16px;
@@ -170,7 +168,7 @@ h3 {
 .capacity-progress {
   display: grid;
   gap: 10px;
-  max-width: 880px;
+  width: 100%;
   margin-top: 20px;
   padding: 15px;
   border: 1px solid rgba(207, 225, 217, 0.9);
@@ -910,6 +908,57 @@ body.editing .toolbar.edit-only {
   display: grid;
 }
 
+body.editing .panel.edit-only {
+  display: block;
+}
+
+.management-panel {
+  border-color: rgba(29, 111, 159, 0.22);
+  background: linear-gradient(135deg, #ffffff 0%, #f3fbff 100%);
+}
+
+.member-manager {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.6fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.member-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.member-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  border: 1px solid rgba(207, 225, 217, 0.92);
+  border-radius: 8px;
+  background: #fff;
+  padding: 7px 8px 7px 12px;
+  box-shadow: var(--shadow-soft);
+}
+
+.inline-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.danger-button {
+  min-height: 30px;
+  border: 1px solid rgba(196, 71, 63, 0.24);
+  border-radius: 7px;
+  background: var(--red-soft);
+  color: var(--red);
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
 .modal {
   width: min(620px, calc(100vw - 32px));
   border: 0;
@@ -1034,6 +1083,8 @@ body.editing .toolbar.edit-only {
   .history-filters,
   .archive-summary,
   .detail-grid,
+  .member-manager,
+  .inline-form,
   .quick-layout,
   .form-grid {
     grid-template-columns: 1fr;
