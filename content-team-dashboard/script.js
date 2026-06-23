@@ -511,6 +511,17 @@ function deleteRequest(requestId) {
   showToast("需求已删除");
 }
 
+function deleteEvent(eventId) {
+  const event = state.events.find((item) => item.id === eventId);
+  if (!event) return;
+  if (!window.confirm(`确认删除日程「${event.type}」吗？`)) return;
+
+  state.events = state.events.filter((item) => item.id !== eventId);
+  saveState();
+  render();
+  showToast("日程已删除，占用扣减已重新计算");
+}
+
 function renderHero() {
   const capacity = getCapacity();
   const remainingText = capacity.remaining > 0 ? `还可接约 ${capacity.remaining} 条视频需求` : "本周暂无可接视频产能";
@@ -897,6 +908,11 @@ function renderEvents() {
                               <strong>${event.type}</strong>
                               <span>扣 ${event.units} 条</span>
                               <p>${event.note}</p>
+                              ${
+                                editing
+                                  ? `<button class="event-delete-button" data-delete-event="${event.id}" type="button">删除</button>`
+                                  : ""
+                              }
                             </article>
                           `
                         )
@@ -932,6 +948,12 @@ function renderEvents() {
         memberId: button.dataset.addEventMember,
         day: button.dataset.addEventDay,
       });
+    });
+  });
+
+  document.querySelectorAll("[data-delete-event]").forEach((button) => {
+    button.addEventListener("click", () => {
+      deleteEvent(button.dataset.deleteEvent);
     });
   });
 }
@@ -1150,7 +1172,7 @@ selectors.editToggle.addEventListener("click", () => {
 
 selectors.confirmPassword.addEventListener("click", () => {
   if (selectors.passwordInput.value !== EDIT_PASSWORD) {
-    selectors.passwordError.textContent = "密码不正确。预览密码是 content2026。";
+    selectors.passwordError.textContent = "密码不正确，请确认后重新输入。";
     return;
   }
   selectors.passwordDialog.close();

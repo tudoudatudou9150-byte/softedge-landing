@@ -873,6 +873,18 @@ tr:last-child td {
   color: #9aa4a0;
 }
 
+.event-delete-button {
+  justify-self: start;
+  min-height: 26px;
+  border: 1px solid rgba(196, 71, 63, 0.2);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--red);
+  padding: 0 8px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
 .mini-button {
   min-height: 30px;
   border: 1px dashed rgba(29, 111, 159, 0.42);
