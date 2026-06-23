@@ -2,6 +2,10 @@ const STORAGE_KEY = "content-team-dashboard-preview";
 const EDIT_PASSWORD = "content2026";
 const DATA_VERSION = 9;
 const CURRENT_WEEK_KEY = getWeekKey(new Date());
+const SUPABASE_URL = "https://vcxetbbpigobkekqzmoy.supabase.co";
+const SUPABASE_KEY = "sb_publishable_n6nVRvL9i5DgDUeEMp-ikw_TszSFoiF";
+const SUPABASE_TABLE = "content_dashboard_state";
+const REMOTE_STATE_ID = "main";
 
 const defaultState = {
   version: DATA_VERSION,
@@ -111,11 +115,14 @@ let editing = false;
 let activeEntryType = "";
 let activeEntryDefaults = {};
 let pendingQuickAdjust = false;
+let syncReady = false;
+let syncTimer = 0;
 
 const dayLabels = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"];
 
 const selectors = {
   body: document.body,
+  syncPill: document.querySelector("#sync-pill"),
   modePill: document.querySelector("#mode-pill"),
   editToggle: document.querySelector("#edit-toggle"),
   quickAdjust: document.querySelector("#quick-adjust"),
@@ -166,6 +173,91 @@ function loadState() {
   } catch {
     return structuredClone(defaultState);
   }
+}
+
+function setSyncStatus(status, text) {
+  if (!selectors.syncPill) return;
+  selectors.syncPill.textContent = text;
+  selectors.syncPill.dataset.status = status;
+}
+
+function remoteHeaders(extra = {}) {
+  return {
+    apikey: SUPABASE_KEY,
+    Authorization: `Bearer ${SUPABASE_KEY}`,
+    ...extra,
+  };
+}
+
+async function fetchRemoteState() {
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}?id=eq.${REMOTE_STATE_ID}&select=data`, {
+    headers: remoteHeaders(),
+  });
+
+  if (!response.ok) throw new Error(`读取共享数据失败：${response.status}`);
+  const rows = await response.json();
+  return rows[0]?.data || null;
+}
+
+async function upsertRemoteState(nextState) {
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}?on_conflict=id`, {
+    method: "POST",
+    headers: remoteHeaders({
+      "Content-Type": "application/json",
+      Prefer: "resolution=merge-duplicates,return=minimal",
+    }),
+    body: JSON.stringify({
+      id: REMOTE_STATE_ID,
+      data: nextState,
+    }),
+  });
+
+  if (!response.ok) throw new Error(`同步共享数据失败：${response.status}`);
+}
+
+async function initializeRemoteSync() {
+  setSyncStatus("syncing", "连接中");
+
+  try {
+    const remoteState = await fetchRemoteState();
+    if (remoteState) {
+      state = migrateState(remoteState);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      render();
+      syncReady = true;
+      setSyncStatus("online", "已同步");
+
+      if (state.week.currentWeekKey === CURRENT_WEEK_KEY) {
+        queueRemoteSave();
+      }
+      return;
+    }
+
+    syncReady = true;
+    await upsertRemoteState(state);
+    setSyncStatus("online", "已同步");
+  } catch (error) {
+    console.error(error);
+    syncReady = false;
+    setSyncStatus("offline", "离线本地");
+    showToast("共享数据库暂时不可用，当前使用本地数据");
+  }
+}
+
+function queueRemoteSave() {
+  if (!syncReady) return;
+  window.clearTimeout(syncTimer);
+  setSyncStatus("syncing", "同步中");
+  syncTimer = window.setTimeout(async () => {
+    try {
+      await upsertRemoteState(state);
+      setSyncStatus("online", "已同步");
+    } catch (error) {
+      console.error(error);
+      setSyncStatus("offline", "同步失败");
+      showToast("同步失败，已先保存在本地");
+    }
+  }, 250);
 }
 
 function migrateState(parsed) {
@@ -230,6 +322,7 @@ function saveState() {
     minute: "2-digit",
   });
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  queueRemoteSave();
 }
 
 function memberName(id) {
@@ -1006,6 +1099,7 @@ selectors.quickSaveAll.addEventListener("click", () => {
 selectors.resetDemo.addEventListener("click", () => {
   localStorage.removeItem(STORAGE_KEY);
   state = structuredClone(defaultState);
+  saveState();
   setEditing(false);
   showToast("样例数据已重置");
 });
@@ -1016,3 +1110,4 @@ selectors.addEvent.addEventListener("click", () => openEntry("event"));
 selectors.saveEntry.addEventListener("click", saveEntry);
 
 render();
+initializeRemoteSync();

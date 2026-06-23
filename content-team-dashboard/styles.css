@@ -418,6 +418,7 @@ select {
 }
 
 .mode-pill,
+.sync-pill,
 .tag,
 .status-tag {
   display: inline-flex;
@@ -434,6 +435,24 @@ select {
   background: linear-gradient(135deg, var(--blue-soft), #edf8f1);
   color: var(--blue);
   border: 1px solid rgba(29, 111, 159, 0.18);
+}
+
+.sync-pill {
+  background: var(--amber-soft);
+  color: var(--amber);
+  border: 1px solid rgba(181, 106, 22, 0.18);
+}
+
+.sync-pill[data-status="online"] {
+  background: var(--green-soft);
+  color: var(--green);
+  border-color: rgba(18, 128, 92, 0.18);
+}
+
+.sync-pill[data-status="offline"] {
+  background: var(--red-soft);
+  color: var(--red);
+  border-color: rgba(196, 71, 63, 0.18);
 }
 
 .tag {

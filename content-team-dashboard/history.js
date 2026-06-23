@@ -1,4 +1,8 @@
 const STORAGE_KEY = "content-team-dashboard-preview";
+const SUPABASE_URL = "https://vcxetbbpigobkekqzmoy.supabase.co";
+const SUPABASE_KEY = "sb_publishable_n6nVRvL9i5DgDUeEMp-ikw_TszSFoiF";
+const SUPABASE_TABLE = "content_dashboard_state";
+const REMOTE_STATE_ID = "main";
 
 const fallbackMembers = [
   { id: "m1", name: "王敬文" },
@@ -32,6 +36,33 @@ function loadHistoryState() {
     };
   } catch {
     return { members: fallbackMembers, requests: [], currentWeekKey: "" };
+  }
+}
+
+function remoteHeaders() {
+  return {
+    apikey: SUPABASE_KEY,
+    Authorization: `Bearer ${SUPABASE_KEY}`,
+  };
+}
+
+async function loadRemoteHistoryState() {
+  try {
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}?id=eq.${REMOTE_STATE_ID}&select=data`, {
+      headers: remoteHeaders(),
+    });
+    if (!response.ok) throw new Error(`读取共享历史失败：${response.status}`);
+
+    const rows = await response.json();
+    const remoteState = rows[0]?.data;
+    if (!remoteState) return;
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(remoteState));
+    historyState = loadHistoryState();
+    renderAssigneeFilter();
+    render();
+  } catch (error) {
+    console.error(error);
   }
 }
 
@@ -179,3 +210,4 @@ function render() {
 
 renderAssigneeFilter();
 render();
+loadRemoteHistoryState();
