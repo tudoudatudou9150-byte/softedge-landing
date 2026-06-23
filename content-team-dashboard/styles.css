@@ -452,6 +452,11 @@ select {
   color: var(--blue);
 }
 
+.status-archive {
+  background: #edf1ef;
+  color: #596761;
+}
+
 .table-wrap {
   max-width: 100%;
   overflow-x: auto;
@@ -520,7 +525,9 @@ tr:last-child td {
 }
 
 .request-card,
-.event-card {
+.event-card,
+.history-card,
+.empty-card {
   display: grid;
   gap: 10px;
   padding: 14px;
@@ -531,14 +538,16 @@ tr:last-child td {
 }
 
 .request-card header,
-.event-card header {
+.event-card header,
+.history-card header {
   display: flex;
   justify-content: space-between;
   gap: 10px;
 }
 
 .request-card p,
-.event-card p {
+.event-card p,
+.history-card p {
   margin: 0;
   color: var(--muted);
   font-size: 13px;
@@ -566,6 +575,52 @@ tr:last-child td {
 
 .request-detail-grid a {
   color: var(--blue);
+}
+
+.history-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.history-card {
+  border-left: 5px solid var(--blue);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 252, 250, 0.96)),
+    linear-gradient(135deg, rgba(29, 111, 159, 0.08), rgba(34, 185, 129, 0.06));
+}
+
+.history-card:has(.status-archive) {
+  border-left-color: var(--line-strong);
+}
+
+.history-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.history-meta span {
+  border: 1px solid rgba(207, 225, 217, 0.9);
+  border-radius: 7px;
+  background: #fff;
+  padding: 7px 9px;
+  color: #44504c;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.tag-link {
+  color: var(--blue);
+  text-decoration: none;
+}
+
+.empty-card {
+  min-height: 78px;
+  place-items: center;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 800;
 }
 
 .calendar-wrap {
@@ -826,6 +881,7 @@ body.editing .toolbar.edit-only {
   .metric-grid,
   .toolbar,
   .request-detail-grid,
+  .history-list,
   .quick-layout,
   .form-grid {
     grid-template-columns: 1fr;

@@ -1,6 +1,7 @@
 const STORAGE_KEY = "content-team-dashboard-preview";
 const EDIT_PASSWORD = "content2026";
-const DATA_VERSION = 8;
+const DATA_VERSION = 9;
+const CURRENT_WEEK_KEY = getWeekKey(new Date());
 
 const defaultState = {
   version: DATA_VERSION,
@@ -8,6 +9,7 @@ const defaultState = {
     type: "small",
     workdays: 6,
     dailyStandard: 4,
+    currentWeekKey: CURRENT_WEEK_KEY,
     updatedAt: "2026-06-22 20:20",
   },
   members: [
@@ -82,6 +84,7 @@ const defaultState = {
       docUrl: "https://example.com/channel-video-brief",
       urgency: "普通",
       status: "已接收",
+      weekKey: CURRENT_WEEK_KEY,
       note: "可插入本周剩余产能",
     },
     {
@@ -97,6 +100,7 @@ const defaultState = {
       docUrl: "https://example.com/unboxing-video-brief",
       urgency: "紧急",
       status: "排到下周",
+      weekKey: "",
       note: "本周拍摄产能不足",
     },
   ],
@@ -123,6 +127,7 @@ const selectors = {
   scheduleTable: document.querySelector("#schedule-table"),
   projectTable: document.querySelector("#project-table"),
   requestList: document.querySelector("#request-list"),
+  historyList: document.querySelector("#history-list"),
   eventGrid: document.querySelector("#event-grid"),
   weekType: document.querySelector("#week-type"),
   workdays: document.querySelector("#workdays"),
@@ -157,10 +162,64 @@ function loadState() {
 
   try {
     const parsed = JSON.parse(stored);
-    return parsed.version === DATA_VERSION ? parsed : structuredClone(defaultState);
+    return migrateState(parsed);
   } catch {
     return structuredClone(defaultState);
   }
+}
+
+function migrateState(parsed) {
+  const migrated = structuredClone(defaultState);
+  Object.assign(migrated, parsed);
+  migrated.version = DATA_VERSION;
+  migrated.week = { ...defaultState.week, ...(parsed.week || {}) };
+  migrated.members = parsed.members || defaultState.members;
+  migrated.events = parsed.events || defaultState.events;
+  migrated.projects = parsed.projects || defaultState.projects;
+  migrated.requests = (parsed.requests || defaultState.requests).map((request) => ({
+    ...request,
+    weekKey: request.weekKey ?? (["已接收", "排期中", "已完成"].includes(request.status) ? migrated.week.currentWeekKey : ""),
+  }));
+  autoResetWeeklySchedule(migrated);
+  return migrated;
+}
+
+function getWeekKey(date) {
+  const target = new Date(date);
+  const day = target.getDay() || 7;
+  target.setHours(0, 0, 0, 0);
+  target.setDate(target.getDate() - day + 1);
+  return target.toISOString().slice(0, 10);
+}
+
+function autoResetWeeklySchedule(nextState) {
+  if (nextState.week.currentWeekKey === CURRENT_WEEK_KEY) return;
+
+  nextState.projects = [];
+  nextState.events = [];
+  nextState.requests = nextState.requests.map((request) => {
+    if (request.status === "已完成") {
+      return {
+        ...request,
+        status: "归档历史",
+        archivedAt: request.archivedAt || nextState.week.currentWeekKey,
+      };
+    }
+
+    if (["已接收", "排期中", "待评估", "暂缓", "排到下周"].includes(request.status)) {
+      const carriedNote = request.note || "";
+      return {
+        ...request,
+        status: "待评估",
+        weekKey: "",
+        note: carriedNote.includes("上周未完成") ? carriedNote : `上周未完成，需重新排期。${carriedNote}`,
+      };
+    }
+
+    return request;
+  });
+  nextState.week.currentWeekKey = CURRENT_WEEK_KEY;
+  nextState.week.note = "已自动进入新一周，未完成需求保留在需求池。";
 }
 
 function saveState() {
@@ -188,7 +247,7 @@ function requestStatusToProjectStatus(status) {
 }
 
 function isRequestScheduled(request) {
-  return ["已接收", "排期中", "已完成"].includes(request.status);
+  return ["已接收", "排期中", "已完成"].includes(request.status) && request.weekKey === state.week.currentWeekKey;
 }
 
 function getScheduledItems() {
@@ -263,6 +322,7 @@ function render() {
   renderProjects();
   renderRequests();
   renderEvents();
+  renderHistory();
 }
 
 function renderWeekEditor() {
@@ -412,9 +472,13 @@ function renderRequests() {
     暂缓: "status-tight",
     排到下周: "status-full",
     已完成: "status-done",
+    归档历史: "status-archive",
   };
 
-  selectors.requestList.innerHTML = state.requests
+  const activeRequests = state.requests.filter((request) => request.status !== "归档历史" && request.status !== "已完成");
+
+  selectors.requestList.innerHTML = activeRequests.length
+    ? activeRequests
     .map(
       (request) => `
         <article class="request-card">
@@ -448,7 +512,7 @@ function renderRequests() {
                       .join("")}
                   </select>
                   <select data-request-status="${request.id}">
-                    ${["待评估", "已接收", "排期中", "暂缓", "排到下周", "已完成"]
+                    ${["待评估", "已接收", "排期中", "暂缓", "排到下周", "已完成", "归档历史"]
                       .map((status) => `<option ${status === request.status ? "selected" : ""}>${status}</option>`)
                       .join("")}
                   </select>`
@@ -458,12 +522,13 @@ function renderRequests() {
         </article>
       `
     )
-    .join("");
+    .join("")
+    : '<article class="empty-card">暂无待评估或待排期需求</article>';
 
-  document.querySelectorAll("[data-request-status]").forEach((select) => {
+  document.querySelectorAll(".request-list [data-request-status]").forEach((select) => {
     select.addEventListener("change", () => {
       const request = state.requests.find((item) => item.id === select.dataset.requestStatus);
-      request.status = select.value;
+      updateRequestStatus(request, select.value);
       saveState();
       render();
       showToast("需求状态已更新");
@@ -479,6 +544,76 @@ function renderRequests() {
       showToast("需求执行人已更新");
     });
   });
+}
+
+function renderHistory() {
+  const historyRequests = state.requests.filter((request) => ["已完成", "归档历史"].includes(request.status));
+
+  selectors.historyList.innerHTML = historyRequests.length
+    ? historyRequests
+        .map(
+          (request) => `
+            <article class="history-card">
+              <header>
+                <div>
+                  <h3>${request.name}</h3>
+                  <p>${request.requester} · ${request.channel || "未选择渠道"} · ${request.type}</p>
+                </div>
+                <span class="status-tag ${request.status === "已完成" ? "status-done" : "status-archive"}">${request.status}</span>
+              </header>
+              <div class="history-meta">
+                <span>${request.units} 条</span>
+                <span>执行人：${memberName(request.assigneeId)}</span>
+                <span>交付：${request.due}</span>
+                <span>${request.weekKey === state.week.currentWeekKey ? "本周完成，仍计入产能" : "历史归档，不占本周产能"}</span>
+              </div>
+              <p>${request.note || "暂无备注"}</p>
+              <div class="card-meta">
+                <span class="tag">${request.channel || "未选择渠道"}</span>
+                <span class="tag">${request.requestTopic || "视频需求"}</span>
+                ${
+                  request.docUrl
+                    ? `<a class="tag tag-link" href="${request.docUrl}" target="_blank" rel="noreferrer">需求文档</a>`
+                    : ""
+                }
+                ${
+                  editing
+                    ? `<select data-request-status="${request.id}">
+                        ${["待评估", "已接收", "排期中", "暂缓", "排到下周", "已完成", "归档历史"]
+                          .map((status) => `<option ${status === request.status ? "selected" : ""}>${status}</option>`)
+                          .join("")}
+                      </select>`
+                    : ""
+                }
+              </div>
+            </article>
+          `
+        )
+        .join("")
+    : '<article class="empty-card">暂无历史需求记录</article>';
+
+  document.querySelectorAll(".history-list [data-request-status]").forEach((select) => {
+    select.addEventListener("change", () => {
+      const request = state.requests.find((item) => item.id === select.dataset.requestStatus);
+      updateRequestStatus(request, select.value);
+      saveState();
+      render();
+      showToast("历史需求状态已更新");
+    });
+  });
+}
+
+function updateRequestStatus(request, status) {
+  request.status = status;
+
+  if (["已接收", "排期中", "已完成"].includes(status)) {
+    request.weekKey = state.week.currentWeekKey;
+  }
+
+  if (status === "归档历史") {
+    request.weekKey = "";
+    request.archivedAt = request.archivedAt || state.week.currentWeekKey;
+  }
 }
 
 function renderEvents() {
@@ -678,7 +813,7 @@ function renderField([name, label, type, width]) {
   }
 
   if (type === "requestStatus") {
-    return renderSelect(name, label, ["待评估", "已接收", "排期中", "暂缓", "排到下周", "已完成"], className);
+    return renderSelect(name, label, ["待评估", "已接收", "排期中", "暂缓", "排到下周", "已完成", "归档历史"], className);
   }
 
   if (type === "channel") {
@@ -731,6 +866,8 @@ function saveEntry() {
     entry.requester = entry.requester.trim() || "未署名";
     entry.requestTopic = entry.requestTopic.trim() || entry.type || "视频";
     entry.name = `${entry.requester}${entry.channel}${entry.requestTopic}需求`;
+    entry.weekKey = ["已接收", "排期中", "已完成"].includes(entry.status) ? state.week.currentWeekKey : "";
+    if (entry.status === "归档历史") entry.archivedAt = state.week.currentWeekKey;
   }
 
   if (activeEntryType === "project") state.projects.push(entry);
