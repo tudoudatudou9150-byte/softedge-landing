@@ -144,7 +144,6 @@ const selectors = {
   dailyStandard: document.querySelector("#daily-standard"),
   saveWeek: document.querySelector("#save-week"),
   addProject: document.querySelector("#add-project"),
-  addInternalProject: document.querySelector("#add-internal-project"),
   addRequest: document.querySelector("#add-request"),
   addEvent: document.querySelector("#add-event"),
   passwordDialog: document.querySelector("#password-dialog"),
@@ -571,6 +570,19 @@ function deleteProject(projectId) {
   showToast("项目已删除");
 }
 
+function addInternalProject(memberId = "") {
+  const member = state.members.find((item) => item.id === memberId);
+  openEntry("internalProject", {
+    type: "自主安排",
+    ownerIds: member ? [member.id] : [],
+    ownerName: member ? member.name : "未分配",
+    status: "待开始",
+    due: "本周",
+    priority: "中",
+    risk: "自主安排",
+  });
+}
+
 function deleteRequest(requestId) {
   const request = state.requests.find((item) => item.id === requestId);
   if (!request) return;
@@ -762,21 +774,36 @@ function renderInternalBoard() {
       return ownerIds.includes(member.id);
     });
 
-    return renderInternalColumn(member.name, memberProjects);
+    return renderInternalColumn(member.name, memberProjects, member.id);
   });
 
   selectors.internalBoard.innerHTML = [
     ...memberColumns,
-    renderInternalColumn("未分配", unassignedProjects),
+    renderInternalColumn("未分配", unassignedProjects, ""),
   ].join("");
+
+  selectors.internalBoard.querySelectorAll("[data-add-internal]").forEach((button) => {
+    button.addEventListener("click", () => {
+      addInternalProject(button.dataset.addInternal || "");
+    });
+  });
+
+  selectors.internalBoard.querySelectorAll("[data-delete-internal]").forEach((button) => {
+    button.addEventListener("click", () => {
+      deleteProject(button.dataset.deleteInternal);
+    });
+  });
 }
 
-function renderInternalColumn(title, projects) {
+function renderInternalColumn(title, projects, memberId) {
   return `
     <article class="internal-column">
       <header>
-        <strong>${title}</strong>
-        <span>${projects.length} 项</span>
+        <div>
+          <strong>${title}</strong>
+          <span>${projects.length} 项</span>
+        </div>
+        <button class="mini-button edit-only" data-add-internal="${memberId}" type="button">添加</button>
       </header>
       <div class="internal-task-list">
         ${
@@ -785,7 +812,14 @@ function renderInternalColumn(title, projects) {
                 .map(
                   (project) => `
                     <article class="internal-task">
-                      <h3>${project.name}</h3>
+                      <div class="internal-task-head">
+                        <h3>${project.name}</h3>
+                        ${
+                          editing
+                            ? `<button class="inline-danger" data-delete-internal="${project.id}" type="button">删除</button>`
+                            : ""
+                        }
+                      </div>
                       <p>${project.type || "自主安排"} · ${project.units || 0} 条 · ${project.due || "未填写交付"}</p>
                       <span class="status-tag status-info">${project.status || "待开始"}</span>
                     </article>
@@ -1170,6 +1204,19 @@ function openEntry(type, defaults = {}) {
         ["risk", "风险或依赖", "text", "full"],
       ],
     },
+    internalProject: {
+      kicker: "内部安排",
+      title: `新增${defaults.ownerName || "成员"}安排`,
+      fields: [
+        ["name", "安排内容", "text"],
+        ["type", "内容类型", "text"],
+        ["units", "内容条数", "number"],
+        ["status", "状态", "projectStatus"],
+        ["due", "预计交付", "text"],
+        ["priority", "优先级", "text"],
+        ["risk", "备注", "text", "full"],
+      ],
+    },
     request: {
       kicker: "需求池",
       title: "下需求",
@@ -1299,7 +1346,13 @@ function saveEntry() {
     entry.ownerId = entry.ownerIds[0] || "";
   }
 
+  if (activeEntryType === "internalProject") {
+    entry.ownerIds = activeEntryDefaults.ownerIds || [];
+    entry.ownerId = entry.ownerIds[0] || "";
+  }
+
   if (activeEntryType === "project") state.projects.push(entry);
+  if (activeEntryType === "internalProject") state.projects.push(entry);
   if (activeEntryType === "request") state.requests.push(entry);
   if (activeEntryType === "event") state.events.push(entry);
 
@@ -1379,13 +1432,6 @@ selectors.quickSaveAll.addEventListener("click", () => {
 });
 
 selectors.addProject.addEventListener("click", () => openEntry("project"));
-selectors.addInternalProject.addEventListener("click", () =>
-  openEntry("project", {
-    type: "自主安排",
-    status: "待开始",
-    priority: "中",
-  })
-);
 selectors.addRequest.addEventListener("click", () => openEntry("request"));
 selectors.addEvent.addEventListener("click", () => openEntry("event"));
 selectors.addMember.addEventListener("click", addMember);
