@@ -1,6 +1,6 @@
-# SOFTEDGE Landing Page
+# Nubohome Landing Page
 
-A static landing page for SOFTEDGE clear furniture corner guards.
+A static landing page for Nubohome clear furniture corner guards.
 
 ## Deploy
 

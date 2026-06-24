@@ -43,6 +43,6 @@ newsletterForm?.addEventListener("submit", (event) => {
   if (button && input) {
     button.textContent = "You're in";
     input.value = "";
-    input.placeholder = "Welcome to SOFTEDGE";
+    input.placeholder = "Welcome to Nubohome";
   }
 });
