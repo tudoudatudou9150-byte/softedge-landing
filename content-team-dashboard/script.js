@@ -1,6 +1,6 @@
 const STORAGE_KEY = "content-team-dashboard-preview";
 const EDIT_PASSWORD = "content2026";
-const DATA_VERSION = 9;
+const DATA_VERSION = 10;
 const CURRENT_WEEK_KEY = getWeekKey(new Date());
 const SUPABASE_URL = "https://vcxetbbpigobkekqzmoy.supabase.co";
 const SUPABASE_KEY = "sb_publishable_n6nVRvL9i5DgDUeEMp-ikw_TszSFoiF";
@@ -268,6 +268,9 @@ function migrateState(parsed) {
   Object.assign(migrated, parsed);
   migrated.version = DATA_VERSION;
   migrated.week = { ...defaultState.week, ...(parsed.week || {}) };
+  if (migrated.week.currentWeekKey === getPreviousDateKey(CURRENT_WEEK_KEY)) {
+    migrated.week.currentWeekKey = CURRENT_WEEK_KEY;
+  }
   migrated.members = parsed.members || defaultState.members;
   migrated.events = parsed.events || defaultState.events;
   migrated.projects = (parsed.projects || defaultState.projects).map((project) => {
@@ -292,12 +295,25 @@ function migrateState(parsed) {
   return migrated;
 }
 
+function getDateKey(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function getPreviousDateKey(dateKey) {
+  const date = new Date(`${dateKey}T00:00:00`);
+  date.setDate(date.getDate() - 1);
+  return getDateKey(date);
+}
+
 function getWeekKey(date) {
   const target = new Date(date);
   const day = target.getDay() || 7;
   target.setHours(0, 0, 0, 0);
   target.setDate(target.getDate() - day + 1);
-  return target.toISOString().slice(0, 10);
+  return getDateKey(target);
 }
 
 function autoResetWeeklySchedule(nextState) {
@@ -390,6 +406,10 @@ function requestStatusToProjectStatus(status) {
   return statusMap[status] || "待评估";
 }
 
+function getOwnerIds(project) {
+  return project.ownerIds || (project.ownerId ? [project.ownerId] : []);
+}
+
 function isRequestScheduled(request) {
   return ["已接收", "排期中", "已完成"].includes(request.status) && request.weekKey === state.week.currentWeekKey;
 }
@@ -420,13 +440,44 @@ function getScheduledItems() {
 function projectUnitsByMember(memberId) {
   return getScheduledItems()
     .filter((project) => {
-      const ownerIds = project.ownerIds || (project.ownerId ? [project.ownerId] : []);
+      const ownerIds = getOwnerIds(project);
       return ownerIds.includes(memberId);
     })
     .reduce((total, project) => {
-      const ownerIds = project.ownerIds || (project.ownerId ? [project.ownerId] : []);
+      const ownerIds = getOwnerIds(project);
       const splitBy = Math.max(ownerIds.length, 1);
       return total + Number(project.units || 0) / splitBy;
+    }, 0);
+}
+
+function getPlanningDays() {
+  const days = Array.from({ length: state.week.workdays }, (_, index) => index + 1);
+  const availableDays = days.filter((day) => !isPastWorkday(day));
+  return availableDays.length ? availableDays : days;
+}
+
+function projectDayLabel(project) {
+  const day = Number(project.day || 0);
+  if (day) return dayLabels[day - 1] || `第 ${day} 天`;
+  return project.due || "未填写日期";
+}
+
+function projectUnitsByMemberDay(memberId, day) {
+  const planningDays = getPlanningDays();
+  return getScheduledItems()
+    .filter((project) => getOwnerIds(project).includes(memberId))
+    .reduce((total, project) => {
+      const ownerIds = getOwnerIds(project);
+      const splitBy = Math.max(ownerIds.length, 1);
+      const memberUnits = Number(project.units || 0) / splitBy;
+      const projectDay = Number(project.day || 0);
+
+      if (projectDay) {
+        return projectDay === Number(day) ? total + memberUnits : total;
+      }
+
+      if (!planningDays.includes(Number(day))) return total;
+      return total + memberUnits / planningDays.length;
     }, 0);
 }
 
@@ -447,7 +498,17 @@ function getCapacity() {
   const theoretical = state.members.length * state.week.workdays * state.week.dailyStandard;
   const eventDeduction = state.events.reduce((total, event) => total + Number(event.units || 0), 0);
   const scheduled = getScheduledItems().reduce((total, project) => total + Number(project.units || 0), 0);
-  const remaining = theoretical - eventDeduction - scheduled;
+  const futureRemaining = state.members.reduce((memberTotal, member) => {
+    const dayTotal = Array.from({ length: state.week.workdays }, (_, index) => index + 1)
+      .filter((day) => !isPastWorkday(day))
+      .reduce((total, day) => {
+        const eventUnits = eventUnitsByMemberDay(member.id, day);
+        const projectUnits = projectUnitsByMemberDay(member.id, day);
+        return total + Math.max(state.week.dailyStandard - eventUnits - projectUnits, 0);
+      }, 0);
+    return memberTotal + dayTotal;
+  }, 0);
+  const remaining = Math.floor(futureRemaining);
   const risky = getScheduledItems().some((project) => project.status === "阻塞" || project.risk.includes("占用"));
   let status = "可接";
   let statusClass = "status-good";
@@ -576,8 +637,8 @@ function addInternalProject(memberId = "") {
     type: "自主安排",
     ownerIds: member ? [member.id] : [],
     ownerName: member ? member.name : "未分配",
+    day: Math.min(getPlanningDays()[0] || 1, state.week.workdays),
     status: "待开始",
-    due: "本周",
     priority: "中",
     risk: "自主安排",
   });
@@ -609,7 +670,7 @@ function renderHero() {
   const capacity = getCapacity();
   const remainingText = capacity.remaining > 0 ? `还可接约 ${capacity.remaining} 条视频需求` : "本周暂无可接视频产能";
   const weekLabel = state.week.type === "big" ? "大周（工作5天，休息2天）" : "小周（工作6天，休息1天）";
-  const used = Math.max(capacity.eventDeduction + capacity.scheduled, 0);
+  const used = Math.max(capacity.theoretical - capacity.remaining, 0);
   const remaining = Math.max(capacity.remaining, 0);
   const usedPercent = capacity.theoretical > 0 ? Math.min((used / capacity.theoretical) * 100, 100) : 0;
   const remainingPercent = capacity.theoretical > 0 ? Math.max(100 - usedPercent, 0) : 0;
@@ -626,9 +687,9 @@ function renderHero() {
       <div class="progress-remaining" style="width: ${remainingPercent}%"></div>
     </div>
     <div class="progress-legend">
-      <span><i class="legend-used"></i>已占用 ${used} 条</span>
+      <span><i class="legend-used"></i>已占用 / 已过 ${used} 条</span>
       <span><i class="legend-remaining"></i>剩余 ${remaining} 条</span>
-      <span><i class="legend-warning"></i>其中拍摄/会议/请假扣减 ${capacity.eventDeduction} 条</span>
+      <span><i class="legend-warning"></i>拍摄/会议/请假扣减 ${capacity.eventDeduction} 条</span>
     </div>
   `;
 }
@@ -642,7 +703,7 @@ function renderMetrics() {
     ["理论产能", capacity.theoretical, `${state.members.length} 人 × ${state.week.workdays} 天 × ${state.week.dailyStandard} 条`],
     ["占用扣减", capacity.eventDeduction, "拍摄 / 会议 / 请假"],
     ["已排任务", capacity.scheduled, "已排内容合计"],
-    ["剩余可接", capacity.remaining, capacity.remaining > 0 ? "可进入需求池评估" : "需要重新排期"],
+    ["剩余可接", capacity.remaining, capacity.remaining > 0 ? "按今天及未来可用产能估算" : "需要重新排期"],
   ];
 
   selectors.metricGrid.innerHTML = metrics
@@ -668,13 +729,13 @@ function renderSchedule() {
     .join("")}</tr></thead>`;
   const rows = state.members
     .map((member) => {
-      const memberProjects = projectUnitsByMember(member.id);
-      const dailyProjectShare = Math.ceil(memberProjects / state.week.workdays);
       const cells = days
         .map((_, index) => {
           const day = index + 1;
           const eventUnits = eventUnitsByMemberDay(member.id, day);
-          const remaining = Math.max(state.week.dailyStandard - eventUnits - dailyProjectShare, 0);
+          const projectUnits = projectUnitsByMemberDay(member.id, day);
+          const dailyProjectShare = Math.ceil(projectUnits);
+          const remaining = Math.max(state.week.dailyStandard - eventUnits - projectUnits, 0);
           const notes = eventNotes(member.id, day) || "无特殊占用";
           const pastClass = isPastWorkday(day) ? " past-day" : "";
           return `
@@ -685,7 +746,7 @@ function renderSchedule() {
                   ${remaining > 1 ? "可接" : remaining === 1 ? "偏紧" : "已满"}
                 </span>
               </div>
-              <p class="cell-note">标准 ${state.week.dailyStandard} / 项目约 ${dailyProjectShare} / 扣减 ${eventUnits}</p>
+              <p class="cell-note">标准 ${state.week.dailyStandard} / 已排约 ${dailyProjectShare} / 扣减 ${eventUnits}</p>
               <p class="cell-note">${notes}</p>
             </td>
           `;
@@ -763,15 +824,11 @@ function renderProjects() {
 function renderInternalBoard() {
   if (!selectors.internalBoard) return;
   const manualProjects = state.projects;
-  const unassignedProjects = manualProjects.filter((project) => {
-    const ownerIds = project.ownerIds || (project.ownerId ? [project.ownerId] : []);
-    return ownerIds.length === 0;
-  });
+  const unassignedProjects = manualProjects.filter((project) => getOwnerIds(project).length === 0);
 
   const memberColumns = state.members.map((member) => {
     const memberProjects = manualProjects.filter((project) => {
-      const ownerIds = project.ownerIds || (project.ownerId ? [project.ownerId] : []);
-      return ownerIds.includes(member.id);
+      return getOwnerIds(project).includes(member.id);
     });
 
     return renderInternalColumn(member.name, memberProjects, member.id);
@@ -820,7 +877,7 @@ function renderInternalColumn(title, projects, memberId) {
                             : ""
                         }
                       </div>
-                      <p>${project.type || "自主安排"} · ${project.units || 0} 条 · ${project.due || "未填写交付"}</p>
+                      <p>${project.type || "自主安排"} · ${project.units || 0} 条 · ${projectDayLabel(project)}</p>
                       <span class="status-tag status-info">${project.status || "待开始"}</span>
                     </article>
                   `
@@ -1210,9 +1267,9 @@ function openEntry(type, defaults = {}) {
       fields: [
         ["name", "安排内容", "text"],
         ["type", "内容类型", "text"],
+        ["day", "安排日期", "day"],
         ["units", "内容条数", "number"],
         ["status", "状态", "projectStatus"],
-        ["due", "预计交付", "text"],
         ["priority", "优先级", "text"],
         ["risk", "备注", "text", "full"],
       ],
@@ -1347,6 +1404,8 @@ function saveEntry() {
   }
 
   if (activeEntryType === "internalProject") {
+    entry.day = Number(entry.day || 1);
+    entry.due = dayLabels[entry.day - 1] || "本周";
     entry.ownerIds = activeEntryDefaults.ownerIds || [];
     entry.ownerId = entry.ownerIds[0] || "";
   }
