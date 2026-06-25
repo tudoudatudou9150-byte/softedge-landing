@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Nubohome | Contact Support</title>
+    <meta
+      name="description"
+      content="Contact Nubohome support for product questions, order help, and after-sales service."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css?v=12" />
+  </head>
+  <body>
+    <div class="announcement">
+      <span>Support replies within 24 hours</span>
+      <span>Order help</span>
+      <span>Product guidance</span>
+    </div>
+
+    <header class="site-header">
+      <a class="brand" href="index.html#top" aria-label="Nubohome home">
+        <span class="brand-mark"></span>
+        Nubohome
+      </a>
+      <nav class="desktop-nav" aria-label="Main navigation">
+        <a href="index.html#shop">Corner Guards</a>
+        <a href="index.html#fit">How It Fits</a>
+        <a href="index.html#rooms">Rooms</a>
+        <a href="index.html#reviews">Reviews</a>
+      </nav>
+      <div class="header-actions">
+        <a class="support-link" href="support.html">Support</a>
+        <a class="header-link" href="index.html#shop">Shop now</a>
+      </div>
+    </header>
+
+    <main>
+      <section class="support-contact" aria-labelledby="support-page-title">
+        <div class="support-contact-copy">
+          <p class="product-kicker">Nubohome support</p>
+          <h1 id="support-page-title">Need help? Send us a message.</h1>
+          <p>
+            Ask about product styles, pack sizes, shipping, returns, or after-sales
+            support. Your message will be sent directly to our support email.
+          </p>
+          <div class="support-contact-details">
+            <span>Support email</span>
+            <a href="mailto:wjyu@hebeizhongren.com">wjyu@hebeizhongren.com</a>
+          </div>
+        </div>
+
+        <form
+          class="email-support-card"
+          action="mailto:wjyu@hebeizhongren.com"
+          method="post"
+          enctype="text/plain"
+        >
+          <label for="support-name">Name</label>
+          <input id="support-name" name="name" type="text" placeholder="Your name" />
+
+          <label for="support-email">Email</label>
+          <input id="support-email" name="email" type="email" placeholder="you@example.com" required />
+
+          <label for="support-topic">Topic</label>
+          <select id="support-topic" name="topic">
+            <option>Product question</option>
+            <option>Order help</option>
+            <option>Shipping</option>
+            <option>Returns</option>
+            <option>Other</option>
+          </select>
+
+          <label for="support-message">Message</label>
+          <textarea
+            id="support-message"
+            name="message"
+            rows="6"
+            placeholder="Tell us what you need help with"
+            required
+          ></textarea>
+
+          <button class="button primary" type="submit">Send email</button>
+          <p>
+            This will open your email app with the message addressed to Nubohome support.
+          </p>
+        </form>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div>
+        <a class="brand footer-brand" href="index.html#top">
+          <span class="brand-mark"></span>
+          Nubohome
+        </a>
+        <p>Clear corner guards for calmer modern homes.</p>
+      </div>
+      <div class="footer-links">
+        <a href="index.html#shop">Shop</a>
+        <a href="index.html#fit">Install</a>
+        <a href="index.html#reviews">Reviews</a>
+        <a href="mailto:wjyu@hebeizhongren.com">Contact</a>
+      </div>
+    </footer>
+    <script src="script.js?v=12"></script>
+  </body>
+</html>

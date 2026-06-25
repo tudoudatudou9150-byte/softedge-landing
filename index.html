@@ -14,7 +14,7 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=7" />
+    <link rel="stylesheet" href="styles.css?v=12" />
   </head>
   <body>
     <div class="announcement">
@@ -34,7 +34,10 @@
         <a href="#rooms">Rooms</a>
         <a href="#reviews">Reviews</a>
       </nav>
-      <a class="header-link" href="#shop">Shop now</a>
+      <div class="header-actions">
+        <a class="support-link" href="support.html">Support</a>
+        <a class="header-link" href="#shop">Shop now</a>
+      </div>
     </header>
 
     <main id="top">
@@ -72,38 +75,81 @@
 
       <section class="section" id="shop">
         <div class="section-heading">
-          <h2>Featured L-Shaped Corner Guard</h2>
-          <p>Nubohome comes in L-shaped and T-shaped styles. This hero page focuses on the L-shaped guard for most right-angle table and cabinet corners.</p>
+          <h2>Choose the shape that fits your corner</h2>
+          <p>Nubohome now comes in L-shaped, T-shaped, and round styles for different furniture corner profiles.</p>
         </div>
         <div class="buy-panel">
           <div class="buy-media">
             <img
+              id="product-image"
               src="assets/product-corner-guards.jpg?v=3"
               alt="L-shaped clear silicone furniture corner guard set"
             />
           </div>
           <div class="buy-details">
-            <p class="product-kicker">Featured style</p>
-            <h3>L-Shaped Rounded Corner Guard</h3>
-            <p>
+            <p class="product-kicker" id="product-kicker">Featured style</p>
+            <h3 id="product-title">L-Shaped Rounded Corner Guard</h3>
+            <p id="product-description">
               Made for right-angle table corners, cabinet corners, and coffee tables.
               The thick rounded cushion protects the corner point only, without
               adding long strips along the furniture edge.
             </p>
 
+            <div class="limited-offer" aria-label="Limited time offer">
+              <div>
+                <span>Limited-time offer</span>
+                <strong>Current launch pricing ends in</strong>
+              </div>
+              <time id="offer-countdown" datetime="PT2H">02:00:00</time>
+            </div>
+
             <div class="option-group">
               <div class="option-head">
                 <span>Style</span>
-                <small>The T-shaped guard suits a different wrap profile and can be shown on its own product page later.</small>
+                <small>Select the shape that matches the corner profile you want to cover.</small>
               </div>
               <div class="style-options" aria-label="Style selection">
-                <button class="style-option selected" type="button">
+                <button
+                  class="style-option selected"
+                  type="button"
+                  data-style="L-Shaped"
+                  data-kicker="Featured style"
+                  data-title="L-Shaped Rounded Corner Guard"
+                  data-description="Made for right-angle table corners, cabinet corners, and coffee tables. The thick rounded cushion protects the corner point only, without adding long strips along the furniture edge."
+                  data-image="assets/product-corner-guards.jpg?v=3"
+                  data-alt="L-shaped clear silicone furniture corner guard set"
+                  aria-pressed="true"
+                >
                   <strong>L-Shaped Rounded Guard</strong>
-                  <span>Featured</span>
+                  <span>Best for table and cabinet corners</span>
                 </button>
-                <button class="style-option disabled" type="button" aria-disabled="true">
+                <button
+                  class="style-option"
+                  type="button"
+                  data-style="T-Shaped"
+                  data-kicker="Wrap profile"
+                  data-title="T-Shaped Rounded Corner Guard"
+                  data-description="Designed for corners that need a wider wrap over the top and side faces. The rounded cushion helps soften the exposed corner while keeping the furniture finish visible."
+                  data-image="assets/t-corner-guard-clean.png?v=1"
+                  data-alt="T-shaped clear silicone furniture corner guard on a wooden table"
+                  aria-pressed="false"
+                >
                   <strong>T-Shaped Rounded Guard</strong>
-                  <span>Separate page later</span>
+                  <span>Wider wrap for straight corners</span>
+                </button>
+                <button
+                  class="style-option"
+                  type="button"
+                  data-style="Round"
+                  data-kicker="Soft round cap"
+                  data-title="Round Corner Guard"
+                  data-description="A compact rounded cap for softer-looking furniture corners. Clear cushioning blends into wood tones while covering the exposed bump point."
+                  data-image="assets/round-corner-guard-clear.png?v=1"
+                  data-alt="Round clear silicone furniture corner guard on a wooden corner"
+                  aria-pressed="false"
+                >
+                  <strong>Round Corner Guard</strong>
+                  <span>Compact rounded corner cap</span>
                 </button>
               </div>
             </div>
@@ -114,27 +160,27 @@
                 <small>Choose by the number of sharp corners you need to cover.</small>
               </div>
               <div class="quantity-options" aria-label="Pack size selection">
-                <button type="button" data-qty="1" data-price="7" data-compare="10" data-shipping="Shipping calculated at checkout" aria-pressed="false">
+                <button type="button" data-qty="1" data-price="7" data-compare="10" data-shipping="Shipping calculated at PayPal checkout" data-free-shipping="false" aria-pressed="false">
                   <span class="pack-size">1 pc</span>
                   <span class="pack-price"><del>$10</del> $7</span>
                   <span class="pack-shipping">Shipping extra</span>
                 </button>
-                <button class="popular" type="button" data-qty="4" data-price="28" data-compare="40" data-shipping="Shipping calculated at checkout" aria-pressed="false">
+                <button class="popular" type="button" data-qty="4" data-price="28" data-compare="40" data-shipping="Shipping calculated at PayPal checkout" data-free-shipping="false" aria-pressed="false">
                   <span class="pack-size">4 pcs</span>
                   <span class="pack-price"><del>$40</del> $28</span>
                   <span class="pack-shipping">Shipping extra</span>
                 </button>
-                <button type="button" data-qty="8" data-price="56" data-compare="80" data-shipping="Free shipping" aria-pressed="false">
+                <button type="button" data-qty="8" data-price="56" data-compare="80" data-shipping="Free shipping" data-free-shipping="true" aria-pressed="false">
                   <span class="pack-size">8 pcs</span>
                   <span class="pack-price"><del>$80</del> $56</span>
                   <span class="pack-shipping free">Free shipping</span>
                 </button>
-                <button class="selected" type="button" data-qty="16" data-price="112" data-compare="160" data-shipping="Free shipping" aria-pressed="true">
+                <button class="selected" type="button" data-qty="16" data-price="112" data-compare="160" data-shipping="Free shipping" data-free-shipping="true" aria-pressed="true">
                   <span class="pack-size">16 pcs</span>
                   <span class="pack-price"><del>$160</del> $112</span>
                   <span class="pack-shipping free">Free shipping</span>
                 </button>
-                <button type="button" data-qty="20" data-price="140" data-compare="200" data-shipping="Free shipping" aria-pressed="false">
+                <button type="button" data-qty="20" data-price="140" data-compare="200" data-shipping="Free shipping" data-free-shipping="true" aria-pressed="false">
                   <span class="pack-size">20 pcs</span>
                   <span class="pack-price"><del>$200</del> $140</span>
                   <span class="pack-shipping free">Free shipping</span>
@@ -163,9 +209,25 @@
               <span>No-drill install</span>
             </div>
 
-            <button class="button primary buy-button" id="add-to-cart" type="button">
-              Add to Cart
-            </button>
+            <form
+              class="paypal-checkout"
+              id="paypal-checkout"
+              action="https://www.paypal.com/cgi-bin/webscr"
+              method="post"
+            >
+              <input type="hidden" name="cmd" value="_xclick" />
+              <input type="hidden" name="business" value="wjyu@hebeizhongren.com" />
+              <input type="hidden" name="currency_code" value="USD" />
+              <input type="hidden" name="item_name" id="paypal-item-name" value="Nubohome L-Shaped Rounded Corner Guard / 16 pcs" />
+              <input type="hidden" name="amount" id="paypal-amount" value="112.00" />
+              <input type="hidden" name="quantity" value="1" />
+              <input type="hidden" name="shipping" id="paypal-shipping" value="0.00" />
+              <input type="hidden" name="return" value="https://www.nubohome.net/" />
+              <input type="hidden" name="cancel_return" value="https://www.nubohome.net/#shop" />
+              <button class="button primary buy-button" id="add-to-cart" type="submit">
+                Buy with PayPal
+              </button>
+            </form>
             <p class="cart-note" id="cart-note" aria-live="polite"></p>
           </div>
         </div>
@@ -289,17 +351,6 @@
         </div>
       </section>
 
-      <section class="newsletter" id="newsletter">
-        <div>
-          <h2>Take 10% off your first order</h2>
-          <p>Get launch offers, restock notes, and simple home safety guides.</p>
-        </div>
-        <form id="newsletter-form">
-          <label class="sr-only" for="email">Email address</label>
-          <input id="email" type="email" placeholder="Email address" />
-          <button type="submit">Join</button>
-        </form>
-      </section>
     </main>
 
     <footer class="site-footer">
@@ -314,9 +365,12 @@
         <a href="#shop">Shop</a>
         <a href="#fit">Install</a>
         <a href="#reviews">Reviews</a>
-        <a href="mailto:hello@nubohome.net">Contact</a>
+        <a href="mailto:wjyu@hebeizhongren.com">Contact</a>
       </div>
+      <p class="footer-disclaimer">
+        Due to production batches and version updates, the exact shape of the product you receive may not be 100% identical to the images shown.
+      </p>
     </footer>
-    <script src="script.js?v=7"></script>
+    <script src="script.js?v=12"></script>
   </body>
 </html>

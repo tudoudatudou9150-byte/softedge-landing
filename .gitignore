@@ -1,5 +1,7 @@
 每日工作清单.csv
 assets/implementation-*.png
 assets/*.png
+!assets/round-corner-guard-clear.png
+!assets/t-corner-guard-clean.png
 .DS_Store
 .superpowers/
