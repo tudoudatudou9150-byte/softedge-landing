@@ -409,6 +409,18 @@ img {
   background: #f5faf7;
 }
 
+.product-variation-note {
+  margin: 12px 0 0;
+  padding: 12px 13px;
+  border: 1px solid #d9e2dd;
+  border-radius: 8px;
+  background: #f8fbf9;
+  color: #68716d;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.55;
+}
+
 .quantity-options {
   grid-template-columns: repeat(5, minmax(0, 1fr));
 }
@@ -914,12 +926,33 @@ img {
   font-weight: 700;
 }
 
-.footer-disclaimer {
+.footer-policy {
   flex: 0 0 100%;
+  display: grid;
+  gap: 8px;
   margin-top: 8px;
+  padding-top: 22px;
+  border-top: 1px solid var(--line);
+}
+
+.footer-policy h2 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 15px;
+  letter-spacing: -0.01em;
+}
+
+.footer-policy p {
+  max-width: 980px;
+  margin: 0;
   color: #7a8580;
   font-size: 12px;
   line-height: 1.55;
+}
+
+.footer-policy a {
+  color: var(--soft-dark);
+  font-weight: 900;
 }
 
 .sr-only {
