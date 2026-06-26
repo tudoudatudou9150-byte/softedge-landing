@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="styles.css?v=14" />
+    <link rel="stylesheet" href="styles.css?v=15" />
   </head>
   <body>
     <header class="site-header">
@@ -31,11 +31,6 @@
         <h1>Manage orders and shipment status.</h1>
         <p>Review orders, add tracking numbers, update shipment status, and export a shipping CSV.</p>
       </section>
-      <section class="system-note">
-        <strong>Owner access</strong>
-        <span data-system-mode></span>
-      </section>
-
       <section class="admin-actions">
         <button class="button primary" type="button" data-export-orders>Export shipping CSV</button>
         <span>Use this file as the first manual bridge to YunExpress while API credentials are not connected.</span>
@@ -61,6 +56,6 @@
     </main>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase-config.js?v=2"></script>
-    <script src="portal.js?v=2"></script>
+    <script src="portal.js?v=3"></script>
   </body>
 </html>

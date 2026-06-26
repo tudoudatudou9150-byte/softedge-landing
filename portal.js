@@ -210,12 +210,113 @@ const getOrderFromUrl = async () => {
 const renderSystemMode = () => {
   const nodes = document.querySelectorAll("[data-system-mode]");
   nodes.forEach((node) => {
-    node.textContent = isCloudMode
-      ? "Connected to Supabase. Customer data is saved securely after sign-in."
-      : isLocalPreview
-        ? "Preview mode. Add the Supabase public key to switch this page to real accounts."
-        : "Secure account access is being connected.";
+    node.textContent = "";
   });
+};
+
+const setAuthMessage = (form, message, type = "info") => {
+  const note = form?.querySelector("[data-auth-message]");
+  if (!note) return;
+  note.textContent = message;
+  note.classList.remove("success-note", "error-text");
+  if (type === "success") note.classList.add("success-note");
+  if (type === "error") note.classList.add("error-text");
+};
+
+const setFormBusy = (form, busy, label) => {
+  const button = form?.querySelector("button[type='submit']");
+  if (!button) return;
+  if (!button.dataset.defaultLabel) button.dataset.defaultLabel = button.textContent;
+  button.disabled = busy;
+  button.textContent = busy ? label : button.dataset.defaultLabel;
+};
+
+const getAuthNextUrl = () => new URLSearchParams(window.location.search).get("next") || "account.html";
+
+const friendlyAuthError = (error) => {
+  const message = String(error?.message || error || "").toLowerCase();
+  if (message.includes("invalid login credentials")) {
+    return "The email or password is incorrect. Please check it and try again.";
+  }
+  if (message.includes("password") && message.includes("characters")) {
+    return "Please use a password with at least 6 characters.";
+  }
+  if (message.includes("already registered") || message.includes("already exists")) {
+    return "This email already has an account. Please check the password and sign in again.";
+  }
+  if (message.includes("email")) {
+    return "Please enter a valid email address.";
+  }
+  return error?.message || "Something went wrong. Please try again.";
+};
+
+const ensureCloudProfile = async (session, name = "") => {
+  if (!session?.user?.id) return;
+  const { error } = await supabaseClient.from("profiles").upsert({
+    id: session.user.id,
+    email: session.user.email,
+    full_name: name || session.user.user_metadata?.full_name || session.user.email
+  }, { onConflict: "id" });
+  if (error) throw error;
+};
+
+const loginThroughApi = async ({ email, password, name = "" }) => {
+  const response = await fetch("/api/auth-login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password, name })
+  });
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.error || "Sign-in failed.");
+  if (!result.session?.access_token || !result.session?.refresh_token) {
+    throw new Error("Sign-in failed. Please try again.");
+  }
+  const { error } = await supabaseClient.auth.setSession({
+    access_token: result.session.access_token,
+    refresh_token: result.session.refresh_token
+  });
+  if (error) throw error;
+  return result.session;
+};
+
+const signInOrCreateCloudAccount = async ({ email, password, name = "" }) => {
+  const cleanEmail = String(email || "").trim().toLowerCase();
+  const cleanName = String(name || "").trim();
+
+  if (window.location.protocol !== "file:") {
+    return loginThroughApi({ email: cleanEmail, password, name: cleanName });
+  }
+
+  const signInResult = await supabaseClient.auth.signInWithPassword({
+    email: cleanEmail,
+    password
+  });
+
+  if (!signInResult.error) {
+    await ensureCloudProfile(signInResult.data.session, cleanName);
+    return signInResult.data.session;
+  }
+
+  if (signInResult.error.message !== "Invalid login credentials") {
+    throw signInResult.error;
+  }
+
+  const signUpResult = await supabaseClient.auth.signUp({
+    email: cleanEmail,
+    password,
+    options: { data: { full_name: cleanName } }
+  });
+
+  if (signUpResult.error) {
+    throw signUpResult.error;
+  }
+
+  if (!signUpResult.data.session) {
+    throw new Error("Account created, but email confirmation is required before sign-in. Please check your inbox.");
+  }
+
+  await ensureCloudProfile(signUpResult.data.session, cleanName);
+  return signUpResult.data.session;
 };
 
 const renderAccountSummary = async () => {
@@ -467,26 +568,29 @@ const bindAuthForms = () => {
     registerForm.addEventListener("submit", async (event) => {
       event.preventDefault();
       const formData = new FormData(registerForm);
-      const email = formData.get("email");
-      const password = formData.get("password");
-      const name = formData.get("name");
+      const email = String(formData.get("email") || "").trim().toLowerCase();
+      const password = String(formData.get("password") || "");
+      const name = String(formData.get("name") || "").trim();
 
-      if (isCloudMode) {
-        const { error } = await supabaseClient.auth.signUp({
-          email,
-          password,
-          options: { data: { full_name: name } }
-        });
-        if (error) throw error;
-      } else {
-        const store = readDemoStore();
-        if (!store.users.some((user) => user.email === email)) {
-          store.users.push({ name, email, phone: "", address: {} });
-          writeDemoStore(store);
+      setAuthMessage(registerForm, "");
+      setFormBusy(registerForm, true, "Creating account...");
+      try {
+        if (isCloudMode) {
+          await signInOrCreateCloudAccount({ email, password, name });
+        } else {
+          const store = readDemoStore();
+          if (!store.users.some((user) => user.email === email)) {
+            store.users.push({ name, email, phone: "", address: {} });
+            writeDemoStore(store);
+          }
+          setDemoSession(email);
         }
-        setDemoSession(email);
+        window.location.href = getAuthNextUrl();
+      } catch (error) {
+        setAuthMessage(registerForm, friendlyAuthError(error), "error");
+      } finally {
+        setFormBusy(registerForm, false);
       }
-      window.location.href = "account.html";
     });
   }
 
@@ -499,16 +603,28 @@ const bindAuthForms = () => {
     loginForm.addEventListener("submit", async (event) => {
       event.preventDefault();
       const formData = new FormData(loginForm);
-      const email = formData.get("email");
-      const password = formData.get("password");
-      if (isCloudMode) {
-        const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-      } else {
-        setDemoSession(email);
+      const email = String(formData.get("email") || "").trim().toLowerCase();
+      const password = String(formData.get("password") || "");
+
+      setAuthMessage(loginForm, "");
+      setFormBusy(loginForm, true, "Signing in...");
+      try {
+        if (isCloudMode) {
+          await signInOrCreateCloudAccount({ email, password });
+        } else {
+          const store = readDemoStore();
+          if (!store.users.some((user) => user.email === email)) {
+            store.users.push({ name: email, email, phone: "", address: {} });
+            writeDemoStore(store);
+          }
+          setDemoSession(email);
+        }
+        window.location.href = getAuthNextUrl();
+      } catch (error) {
+        setAuthMessage(loginForm, friendlyAuthError(error), "error");
+      } finally {
+        setFormBusy(loginForm, false);
       }
-      const next = new URLSearchParams(window.location.search).get("next") || "account.html";
-      window.location.href = next;
     });
   }
 

@@ -1088,6 +1088,11 @@ img {
   cursor: pointer;
 }
 
+.portal-form .button:disabled {
+  cursor: wait;
+  opacity: 0.66;
+}
+
 .portal-form p,
 .form-note {
   margin: 4px 0 0;
@@ -1095,6 +1100,14 @@ img {
   font-size: 12px;
   font-weight: 800;
   line-height: 1.45;
+}
+
+.form-note.error-text {
+  color: #b42318;
+}
+
+.form-note.success-note {
+  color: #287d4b;
 }
 
 .portal-grid {
