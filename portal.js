@@ -264,6 +264,9 @@ const friendlyAuthError = (error) => {
   if (message.includes("invalid login credentials")) {
     return "The email or password is incorrect. Please check it and try again.";
   }
+  if (message.includes("email or password") || message.includes("incorrect")) {
+    return "The email or password is incorrect. Please check it and try again.";
+  }
   if (message.includes("password") && message.includes("characters")) {
     return "Please use a password with at least 6 characters.";
   }
