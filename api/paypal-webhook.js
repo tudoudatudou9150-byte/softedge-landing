@@ -85,9 +85,16 @@ const supabaseRequest = async (path, options = {}) => {
   return response.json();
 };
 
-const getLocalOrderId = (event) => {
-  const purchaseUnit = event.resource?.purchase_units?.[0] || event.resource?.supplementary_data?.related_ids;
-  return purchaseUnit?.custom_id || event.resource?.custom_id;
+const getLocalOrderId = (event) => event.resource?.custom_id;
+
+const getOrderFilter = (event) => {
+  const localOrderId = getLocalOrderId(event);
+  if (localOrderId) return `id=eq.${encodeURIComponent(localOrderId)}`;
+
+  const paypalOrderId = event.resource?.supplementary_data?.related_ids?.order_id;
+  if (paypalOrderId) return `paypal_order_id=eq.${encodeURIComponent(paypalOrderId)}`;
+
+  return "";
 };
 
 module.exports = async (req, res) => {
@@ -104,14 +111,14 @@ module.exports = async (req, res) => {
       return;
     }
 
-    const localOrderId = getLocalOrderId(event);
-    if (!localOrderId) {
+    const orderFilter = getOrderFilter(event);
+    if (!orderFilter) {
       res.status(200).json({ received: true, ignored: "No local order id" });
       return;
     }
 
-    if (event.event_type === "CHECKOUT.ORDER.APPROVED" || event.event_type === "PAYMENT.CAPTURE.COMPLETED") {
-      await supabaseRequest(`orders?id=eq.${localOrderId}`, {
+    if (event.event_type === "PAYMENT.CAPTURE.COMPLETED") {
+      const updatedOrders = await supabaseRequest(`orders?${orderFilter}`, {
         method: "PATCH",
         body: JSON.stringify({
           payment_status: "paid",
@@ -119,15 +126,18 @@ module.exports = async (req, res) => {
         })
       });
 
-      await supabaseRequest("order_events", {
-        method: "POST",
-        body: JSON.stringify({
-          order_id: localOrderId,
-          label: "Order paid",
-          detail: "Payment confirmed by PayPal.",
-          event_date: new Date().toISOString().slice(0, 10)
-        })
-      });
+      const localOrder = updatedOrders[0];
+      if (localOrder?.id) {
+        await supabaseRequest("order_events", {
+          method: "POST",
+          body: JSON.stringify({
+            order_id: localOrder.id,
+            label: "Order paid",
+            detail: "Payment confirmed by PayPal webhook.",
+            event_date: new Date().toISOString().slice(0, 10)
+          })
+        });
+      }
     }
 
     res.status(200).json({ received: true });

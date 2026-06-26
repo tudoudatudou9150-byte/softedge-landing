@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Nubohome | Tracking</title>
+    <title>Nubohome | Confirming Payment</title>
     <link rel="icon" href="data:," />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -14,9 +14,8 @@
     <header class="site-header">
       <a class="brand" href="index.html#top"><span class="brand-mark"></span>Nubohome</a>
       <nav class="desktop-nav" aria-label="Main navigation">
-        <a href="account.html">Account</a>
-        <a href="address.html">Address</a>
         <a href="orders.html">Orders</a>
+        <a href="tracking.html">Tracking</a>
         <a href="support.html">Support</a>
       </nav>
       <div class="header-actions">
@@ -26,18 +25,15 @@
 
     <main class="portal-page">
       <section class="portal-hero">
-        <p class="product-kicker">Shipment tracking</p>
-        <h1>Track delivery updates for your order.</h1>
-        <p>Customers can see the order status, carrier, tracking number, and update history in one place.</p>
+        <p class="product-kicker">Secure checkout</p>
+        <h1 data-payment-title>Confirming your PayPal payment.</h1>
+        <p data-payment-message>Please keep this page open while we finish your order.</p>
       </section>
       <section class="system-note">
-        <strong>Tracking source</strong>
-        <span>Tracking can be updated from the owner dashboard. A carrier API can be connected later for automatic scans.</span>
+        <strong>Next step</strong>
+        <span data-payment-next>We will send you to your order history automatically.</span>
       </section>
-      <section class="tracking-panel" data-tracking></section>
     </main>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="supabase-config.js?v=2"></script>
-    <script src="portal.js?v=2"></script>
+    <script src="payment-return.js?v=1"></script>
   </body>
 </html>

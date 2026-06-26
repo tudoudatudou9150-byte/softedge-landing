@@ -139,7 +139,7 @@ module.exports = async (req, res) => {
               brand_name: "Nubohome",
               landing_page: "NO_PREFERENCE",
               user_action: "PAY_NOW",
-              return_url: `${siteUrl}/orders.html`,
+              return_url: `${siteUrl}/payment-return.html`,
               cancel_url: siteUrl
             }
           }
