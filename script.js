@@ -39,12 +39,14 @@ const getCheckoutSelection = () => ({
 });
 
 const savePendingCheckout = () => {
-  sessionStorage.setItem(PENDING_CHECKOUT_KEY, JSON.stringify(getCheckoutSelection()));
+  const selection = JSON.stringify(getCheckoutSelection());
+  sessionStorage.setItem(PENDING_CHECKOUT_KEY, selection);
+  localStorage.setItem(PENDING_CHECKOUT_KEY, selection);
 };
 
 const readPendingCheckout = () => {
   try {
-    return JSON.parse(sessionStorage.getItem(PENDING_CHECKOUT_KEY) || "null");
+    return JSON.parse(sessionStorage.getItem(PENDING_CHECKOUT_KEY) || localStorage.getItem(PENDING_CHECKOUT_KEY) || "null");
   } catch {
     return null;
   }
@@ -206,6 +208,7 @@ paypalCheckout?.addEventListener("submit", async (event) => {
     if (!response.ok) throw new Error(result.error || "Could not create checkout.");
     if (!result.approveUrl) throw new Error("PayPal did not return a checkout link.");
     sessionStorage.removeItem(PENDING_CHECKOUT_KEY);
+    localStorage.removeItem(PENDING_CHECKOUT_KEY);
     window.location.href = result.approveUrl;
   } catch (error) {
     cartNote.textContent = error.message;
@@ -215,7 +218,7 @@ paypalCheckout?.addEventListener("submit", async (event) => {
 applyPendingCheckout();
 updatePaypalCheckout();
 
-if (new URLSearchParams(window.location.search).get("checkout") === "resume" && readPendingCheckout()) {
+if (new URLSearchParams(window.location.search).get("checkout") === "resume") {
   setTimeout(() => {
     if (paypalCheckout) {
       if (cartNote) cartNote.textContent = "Taking you to PayPal checkout...";

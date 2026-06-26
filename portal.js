@@ -1,5 +1,6 @@
 const STORE_KEY = "nubohome_portal_v2";
 const SESSION_KEY = "nubohome_session_email";
+const PENDING_CHECKOUT_KEY = "nubohome_pending_checkout";
 
 const config = window.NUBOHOME_SUPABASE || {};
 const supabaseClient = window.supabase && config.url && config.anonKey
@@ -259,6 +260,52 @@ const bindAuthSwitchLinks = () => {
   });
 };
 
+const readPendingCheckout = () => {
+  try {
+    return JSON.parse(sessionStorage.getItem(PENDING_CHECKOUT_KEY) || localStorage.getItem(PENDING_CHECKOUT_KEY) || "null");
+  } catch {
+    return null;
+  }
+};
+
+const clearPendingCheckout = () => {
+  sessionStorage.removeItem(PENDING_CHECKOUT_KEY);
+  localStorage.removeItem(PENDING_CHECKOUT_KEY);
+};
+
+const isCheckoutResumeUrl = (value = "") => {
+  try {
+    const url = new URL(value, window.location.href);
+    return url.searchParams.get("checkout") === "resume";
+  } catch {
+    return value.includes("checkout=resume");
+  }
+};
+
+const continueToPayPalCheckout = async ({ session, profile, address }) => {
+  const pending = readPendingCheckout() || {};
+  const style = ["L-Shaped", "T-Shaped", "Round"].includes(pending.style) ? pending.style : "L-Shaped";
+  const packSize = [1, 4, 8, 16, 20].includes(Number(pending.packSize)) ? Number(pending.packSize) : 16;
+
+  const response = await fetch("/api/create-paypal-order", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      style,
+      packSize,
+      userId: session.user.id,
+      addressId: address.id,
+      customerEmail: session.user.email,
+      customerName: profile?.full_name || address.full_name || session.user.email
+    })
+  });
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.error || "Could not create checkout.");
+  if (!result.approveUrl) throw new Error("PayPal did not return a checkout link.");
+  clearPendingCheckout();
+  window.location.href = result.approveUrl;
+};
+
 const friendlyAuthError = (error) => {
   const message = String(error?.message || error || "").toLowerCase();
   if (message.includes("invalid login credentials")) {
@@ -470,10 +517,19 @@ const bindAddressForm = async () => {
         address_line_2: formData.get("addressLine2"),
         is_default: true
       };
-      const { error } = await supabaseClient.from("addresses").upsert(payload);
+      const { data: savedAddress, error } = await supabaseClient
+        .from("addresses")
+        .upsert(payload)
+        .select("*")
+        .single();
       if (error) throw error;
       $("[data-form-note]").textContent = "Address saved to your account.";
       const next = new URLSearchParams(window.location.search).get("next");
+      if (next && isCheckoutResumeUrl(next)) {
+        $("[data-form-note]").textContent = "Address saved. Taking you to secure checkout...";
+        await continueToPayPalCheckout({ session, profile, address: savedAddress });
+        return;
+      }
       if (next) window.location.href = next;
     });
     return;
