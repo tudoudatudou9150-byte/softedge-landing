@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="styles.css?v=15" />
+    <link rel="stylesheet" href="styles.css?v=16" />
   </head>
   <body>
     <header class="site-header">
@@ -37,7 +37,10 @@
           <label for="email">Email</label>
           <input id="email" name="email" type="email" autocomplete="email" required />
           <label for="password">Password</label>
-          <input id="password" name="password" type="password" autocomplete="current-password" required />
+          <div class="password-field">
+            <input id="password" name="password" type="password" autocomplete="current-password" minlength="6" required />
+            <button class="password-toggle" type="button" data-password-toggle aria-label="Show password">Show</button>
+          </div>
           <button class="button primary" type="submit">Sign in</button>
           <p class="form-note" data-auth-message aria-live="polite"></p>
         </form>
@@ -45,6 +48,6 @@
     </main>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase-config.js?v=2"></script>
-    <script src="portal.js?v=3"></script>
+    <script src="portal.js?v=4"></script>
   </body>
 </html>

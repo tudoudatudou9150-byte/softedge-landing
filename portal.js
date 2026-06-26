@@ -233,6 +233,17 @@ const setFormBusy = (form, busy, label) => {
 
 const getAuthNextUrl = () => new URLSearchParams(window.location.search).get("next") || "account.html";
 
+const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+const validateAuthInput = (email, password) => {
+  if (!isValidEmail(email)) {
+    throw new Error("Please enter a valid email address.");
+  }
+  if (password.length < 6) {
+    throw new Error("Please use a password with at least 6 characters.");
+  }
+};
+
 const friendlyAuthError = (error) => {
   const message = String(error?.message || error || "").toLowerCase();
   if (message.includes("invalid login credentials")) {
@@ -575,6 +586,7 @@ const bindAuthForms = () => {
       setAuthMessage(registerForm, "");
       setFormBusy(registerForm, true, "Creating account...");
       try {
+        validateAuthInput(email, password);
         if (isCloudMode) {
           await signInOrCreateCloudAccount({ email, password, name });
         } else {
@@ -609,6 +621,7 @@ const bindAuthForms = () => {
       setAuthMessage(loginForm, "");
       setFormBusy(loginForm, true, "Signing in...");
       try {
+        validateAuthInput(email, password);
         if (isCloudMode) {
           await signInOrCreateCloudAccount({ email, password });
         } else {
@@ -627,6 +640,17 @@ const bindAuthForms = () => {
       }
     });
   }
+
+  document.querySelectorAll("[data-password-toggle]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const field = button.closest(".password-field")?.querySelector("input");
+      if (!field) return;
+      const shouldShow = field.type === "password";
+      field.type = shouldShow ? "text" : "password";
+      button.textContent = shouldShow ? "Hide" : "Show";
+      button.setAttribute("aria-label", shouldShow ? "Hide password" : "Show password");
+    });
+  });
 
   const logoutButton = $("[data-logout]");
   if (logoutButton) {

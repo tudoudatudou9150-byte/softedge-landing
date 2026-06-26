@@ -1082,6 +1082,34 @@ img {
   padding: 0 12px;
 }
 
+.password-field {
+  position: relative;
+}
+
+.password-field input {
+  padding-right: 76px;
+}
+
+.password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  min-width: 56px;
+  border: 0;
+  border-radius: 6px;
+  background: #efe7db;
+  color: var(--soft-dark);
+  font: 900 12px/1 Inter, sans-serif;
+  padding: 9px 10px;
+  cursor: pointer;
+}
+
+.password-toggle:focus-visible {
+  outline: 2px solid var(--soft-dark);
+  outline-offset: 2px;
+}
+
 .portal-form .button {
   margin-top: 8px;
   border: 0;

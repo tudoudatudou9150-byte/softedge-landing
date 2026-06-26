@@ -78,6 +78,14 @@ const isExistingUserError = (result) => {
   return message.includes("already") || message.includes("registered") || message.includes("exists");
 };
 
+const getAuthErrorMessage = (result) => result?.message
+  || result?.msg
+  || result?.error_description
+  || result?.error
+  || "";
+
+const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
 module.exports = async (req, res) => {
   if (req.method !== "POST") {
     res.status(405).json({ error: "Method not allowed" });
@@ -92,6 +100,16 @@ module.exports = async (req, res) => {
 
     if (!email || !password) {
       res.status(400).json({ error: "Email and password are required." });
+      return;
+    }
+
+    if (!isValidEmail(email)) {
+      res.status(400).json({ error: "Please enter a valid email address." });
+      return;
+    }
+
+    if (password.length < 6) {
+      res.status(400).json({ error: "Please use a password with at least 6 characters." });
       return;
     }
 
@@ -112,7 +130,7 @@ module.exports = async (req, res) => {
         res.status(401).json({ error: "The email or password is incorrect. Please check it and try again." });
         return;
       }
-      res.status(created.status || 400).json({ error: created.result.message || "Could not create account." });
+      res.status(created.status || 400).json({ error: getAuthErrorMessage(created.result) || "Could not create account." });
       return;
     }
 
