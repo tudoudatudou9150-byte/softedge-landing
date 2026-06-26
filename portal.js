@@ -267,11 +267,11 @@ const friendlyAuthError = (error) => {
   if (message.includes("email or password") || message.includes("incorrect")) {
     return "The email or password is incorrect. Please check it and try again.";
   }
+  if (message.includes("already registered") || message.includes("already exists") || message.includes("has already been registered")) {
+    return "This email already has an account. Please use the original password or contact support.";
+  }
   if (message.includes("password") && message.includes("characters")) {
     return "Please use a password with at least 6 characters.";
-  }
-  if (message.includes("already registered") || message.includes("already exists")) {
-    return "This email already has an account. Please check the password and sign in again.";
   }
   if (message.includes("email")) {
     return "Please enter a valid email address.";

@@ -74,7 +74,7 @@ const createConfirmedUser = async ({ email, password, name }) => {
 };
 
 const isExistingUserError = (result) => {
-  const message = String(result?.message || result?.error_description || result?.error || "").toLowerCase();
+  const message = String(result?.message || result?.msg || result?.error_description || result?.error || "").toLowerCase();
   return message.includes("already") || message.includes("registered") || message.includes("exists");
 };
 
