@@ -18,8 +18,13 @@ const checkoutConfig = window.NUBOHOME_SUPABASE || {};
 const checkoutSupabase = window.supabase && checkoutConfig.url && checkoutConfig.anonKey
   ? window.supabase.createClient(checkoutConfig.url, checkoutConfig.anonKey)
   : null;
+const PENDING_CHECKOUT_KEY = "nubohome_pending_checkout";
 
 let selectedStyle = "L-Shaped";
+
+const checkoutResumeUrl = "index.html?checkout=resume#shop";
+const addressNextUrl = `address.html?next=${encodeURIComponent(checkoutResumeUrl)}`;
+const loginNextUrl = `login.html?next=${encodeURIComponent(addressNextUrl)}`;
 
 const getSelectedQuantity = () => {
   const selected = document.querySelector(".quantity-options button.selected");
@@ -27,6 +32,34 @@ const getSelectedQuantity = () => {
 };
 
 const getSelectedQuantityOption = () => document.querySelector(".quantity-options button.selected");
+
+const getCheckoutSelection = () => ({
+  style: selectedStyle,
+  packSize: Number(getSelectedQuantity())
+});
+
+const savePendingCheckout = () => {
+  sessionStorage.setItem(PENDING_CHECKOUT_KEY, JSON.stringify(getCheckoutSelection()));
+};
+
+const readPendingCheckout = () => {
+  try {
+    return JSON.parse(sessionStorage.getItem(PENDING_CHECKOUT_KEY) || "null");
+  } catch {
+    return null;
+  }
+};
+
+const applyPendingCheckout = () => {
+  const pending = readPendingCheckout();
+  if (!pending) return;
+
+  const pendingStyle = document.querySelector(`.style-options .style-option[data-style="${pending.style}"]`);
+  if (pendingStyle) pendingStyle.click();
+
+  const pendingQuantity = document.querySelector(`.quantity-options button[data-qty="${pending.packSize}"]`);
+  if (pendingQuantity) pendingQuantity.click();
+};
 
 const updateSelectedPlan = () => {
   if (!selectedPlan) return;
@@ -115,7 +148,8 @@ const buildCheckoutPayload = async () => {
   const session = sessionResult.data.session;
 
   if (!session) {
-    window.location.href = `login.html?next=${encodeURIComponent("index.html#shop")}`;
+    savePendingCheckout();
+    window.location.href = loginNextUrl;
     return null;
   }
 
@@ -135,7 +169,8 @@ const buildCheckoutPayload = async () => {
   if (addressError) throw addressError;
 
   if (!address) {
-    window.location.href = `address.html?next=${encodeURIComponent("index.html#shop")}`;
+    savePendingCheckout();
+    window.location.href = addressNextUrl;
     return null;
   }
 
@@ -170,13 +205,24 @@ paypalCheckout?.addEventListener("submit", async (event) => {
     const result = await response.json();
     if (!response.ok) throw new Error(result.error || "Could not create checkout.");
     if (!result.approveUrl) throw new Error("PayPal did not return a checkout link.");
+    sessionStorage.removeItem(PENDING_CHECKOUT_KEY);
     window.location.href = result.approveUrl;
   } catch (error) {
     cartNote.textContent = error.message;
   }
 });
 
+applyPendingCheckout();
 updatePaypalCheckout();
+
+if (new URLSearchParams(window.location.search).get("checkout") === "resume" && readPendingCheckout()) {
+  setTimeout(() => {
+    if (paypalCheckout) {
+      if (cartNote) cartNote.textContent = "Taking you to PayPal checkout...";
+      paypalCheckout.requestSubmit();
+    }
+  }, 500);
+}
 
 if (offerCountdown) {
   const offerDuration = 2 * 60 * 60 * 1000;

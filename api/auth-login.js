@@ -84,7 +84,11 @@ const getAuthErrorMessage = (result) => result?.message
   || result?.error
   || "";
 
-const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+const isValidEmail = (email) => {
+  const cleanEmail = String(email || "").trim();
+  const atIndex = cleanEmail.indexOf("@");
+  return atIndex > 0 && atIndex < cleanEmail.length - 1;
+};
 
 module.exports = async (req, res) => {
   if (req.method !== "POST") {

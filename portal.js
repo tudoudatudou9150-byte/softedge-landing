@@ -163,7 +163,8 @@ const normalizeOrder = (order) => ({
 const requireCloudLogin = async () => {
   const session = await getSession();
   if (!session) {
-    window.location.href = `login.html?next=${encodeURIComponent(window.location.pathname.split("/").pop() || "account.html")}`;
+    const currentPage = `${window.location.pathname.split("/").pop() || "account.html"}${window.location.search}${window.location.hash}`;
+    window.location.href = `login.html?next=${encodeURIComponent(currentPage)}`;
     return null;
   }
   return session;
@@ -233,7 +234,11 @@ const setFormBusy = (form, busy, label) => {
 
 const getAuthNextUrl = () => new URLSearchParams(window.location.search).get("next") || "account.html";
 
-const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+const isValidEmail = (email) => {
+  const cleanEmail = String(email || "").trim();
+  const atIndex = cleanEmail.indexOf("@");
+  return atIndex > 0 && atIndex < cleanEmail.length - 1;
+};
 
 const validateAuthInput = (email, password) => {
   if (!isValidEmail(email)) {
@@ -242,6 +247,16 @@ const validateAuthInput = (email, password) => {
   if (password.length < 6) {
     throw new Error("Please use a password with at least 6 characters.");
   }
+};
+
+const bindAuthSwitchLinks = () => {
+  const next = new URLSearchParams(window.location.search).get("next");
+  if (!next) return;
+
+  document.querySelectorAll('a[href="login.html"], a[href="register.html"]').forEach((link) => {
+    const target = link.getAttribute("href");
+    link.href = `${target}?next=${encodeURIComponent(next)}`;
+  });
 };
 
 const friendlyAuthError = (error) => {
@@ -795,6 +810,7 @@ const bindOrderExport = () => {
 const initPortal = async () => {
   try {
     renderSystemMode();
+    bindAuthSwitchLinks();
     bindAuthForms();
     await renderAccountSummary();
     await bindAddressForm();
