@@ -14,6 +14,10 @@ const paypalCheckout = document.querySelector("#paypal-checkout");
 const paypalItemName = document.querySelector("#paypal-item-name");
 const paypalAmount = document.querySelector("#paypal-amount");
 const paypalShipping = document.querySelector("#paypal-shipping");
+const checkoutConfig = window.NUBOHOME_SUPABASE || {};
+const checkoutSupabase = window.supabase && checkoutConfig.url && checkoutConfig.anonKey
+  ? window.supabase.createClient(checkoutConfig.url, checkoutConfig.anonKey)
+  : null;
 
 let selectedStyle = "L-Shaped";
 
@@ -104,11 +108,72 @@ quantityOptions.forEach((option) => {
   });
 });
 
-paypalCheckout?.addEventListener("submit", () => {
+const buildCheckoutPayload = async () => {
+  const selectedQuantity = getSelectedQuantityOption();
+  const quantity = Number(selectedQuantity?.dataset.qty || "16");
+  const sessionResult = await checkoutSupabase.auth.getSession();
+  const session = sessionResult.data.session;
+
+  if (!session) {
+    window.location.href = `login.html?next=${encodeURIComponent("index.html#shop")}`;
+    return null;
+  }
+
+  const { data: profile, error: profileError } = await checkoutSupabase
+    .from("profiles")
+    .select("*")
+    .eq("id", session.user.id)
+    .single();
+  if (profileError && profileError.code !== "PGRST116") throw profileError;
+
+  const { data: address, error: addressError } = await checkoutSupabase
+    .from("addresses")
+    .select("*")
+    .eq("user_id", session.user.id)
+    .eq("is_default", true)
+    .maybeSingle();
+  if (addressError) throw addressError;
+
+  if (!address) {
+    window.location.href = `address.html?next=${encodeURIComponent("index.html#shop")}`;
+    return null;
+  }
+
+  return {
+    style: selectedStyle,
+    packSize: quantity,
+    userId: session.user.id,
+    addressId: address.id,
+    customerEmail: session.user.email,
+    customerName: profile?.full_name || address.full_name || session.user.email
+  };
+};
+
+paypalCheckout?.addEventListener("submit", async (event) => {
   if (!cartNote || !selectedPlan || !selectedPrice || !selectedShipping) return;
 
   updatePaypalCheckout();
   cartNote.textContent = `Opening PayPal checkout for ${selectedPlan.textContent} — ${selectedPrice.textContent}, ${selectedShipping.textContent}.`;
+
+  if (checkoutConfig.checkoutMode !== "api" || !checkoutSupabase) return;
+
+  event.preventDefault();
+  try {
+    const payload = await buildCheckoutPayload();
+    if (!payload) return;
+
+    const response = await fetch("/api/create-paypal-order", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || "Could not create checkout.");
+    if (!result.approveUrl) throw new Error("PayPal did not return a checkout link.");
+    window.location.href = result.approveUrl;
+  } catch (error) {
+    cartNote.textContent = error.message;
+  }
 });
 
 updatePaypalCheckout();

@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Nubohome | My Orders</title>
+    <link rel="icon" href="data:," />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css?v=14" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="index.html#top"><span class="brand-mark"></span>Nubohome</a>
+      <nav class="desktop-nav" aria-label="Main navigation">
+        <a href="account.html">Account</a>
+        <a href="address.html">Address</a>
+        <a href="tracking.html">Tracking</a>
+        <a href="support.html">Support</a>
+      </nav>
+      <div class="header-actions">
+        <a class="header-link" href="index.html#shop">Shop now</a>
+      </div>
+    </header>
+
+    <main class="portal-page">
+      <section class="portal-hero">
+        <p class="product-kicker">Order history</p>
+        <h1>Orders linked to your account.</h1>
+        <p>Paid orders appear here after checkout and can be followed from the tracking page.</p>
+      </section>
+      <section class="system-note">
+        <strong>Order privacy</strong>
+        <span data-system-mode></span>
+      </section>
+      <section class="orders-list" data-orders></section>
+    </main>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js?v=1"></script>
+    <script src="portal.js?v=2"></script>
+  </body>
+</html>

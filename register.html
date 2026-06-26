@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Nubohome | Create Account</title>
+    <link rel="icon" href="data:," />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css?v=14" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="index.html#top"><span class="brand-mark"></span>Nubohome</a>
+      <nav class="desktop-nav" aria-label="Main navigation">
+        <a href="index.html#shop">Corner Guards</a>
+        <a href="orders.html">Orders</a>
+        <a href="tracking.html">Tracking</a>
+        <a href="support.html">Support</a>
+      </nav>
+      <div class="header-actions">
+        <a class="support-link" href="login.html">Sign in</a>
+        <a class="header-link" href="index.html#shop">Shop now</a>
+      </div>
+    </header>
+
+    <main class="portal-page">
+      <section class="portal-hero">
+        <p class="product-kicker">Create account</p>
+        <h1>Save your address before checkout and track every order.</h1>
+        <p>Create a Nubohome account before checkout so orders can stay linked to your email and delivery address.</p>
+      </section>
+
+      <section class="portal-form-wrap">
+        <form class="portal-form" data-register-form>
+          <label for="name">Name</label>
+          <input id="name" name="name" type="text" placeholder="Your name" required />
+          <label for="email">Email</label>
+          <input id="email" name="email" type="email" placeholder="you@example.com" required />
+          <label for="password">Password</label>
+          <input id="password" name="password" type="password" placeholder="Create a password" required />
+          <button class="button primary" type="submit">Create account</button>
+          <p class="form-note" data-system-mode></p>
+        </form>
+      </section>
+    </main>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js?v=1"></script>
+    <script src="portal.js?v=2"></script>
+  </body>
+</html>

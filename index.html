@@ -9,13 +9,14 @@
       content="Clear cushioned furniture corner guards for nurseries, rentals, apartments, and everyday family homes."
     />
     <link rel="canonical" href="https://www.nubohome.net/" />
+    <link rel="icon" href="data:," />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=13" />
+    <link rel="stylesheet" href="styles.css?v=14" />
   </head>
   <body>
     <div class="announcement">
@@ -37,6 +38,7 @@
       </nav>
       <div class="header-actions">
         <a class="support-link" href="support.html">Support</a>
+        <a class="support-link" href="login.html">Account</a>
         <a class="header-link" href="#shop">Shop now</a>
       </div>
     </header>
@@ -226,7 +228,7 @@
               <input type="hidden" name="amount" id="paypal-amount" value="112.00" />
               <input type="hidden" name="quantity" value="1" />
               <input type="hidden" name="shipping" id="paypal-shipping" value="0.00" />
-              <input type="hidden" name="return" value="https://www.nubohome.net/" />
+              <input type="hidden" name="return" value="https://www.nubohome.net/orders.html" />
               <input type="hidden" name="cancel_return" value="https://www.nubohome.net/" />
               <button class="button primary buy-button" id="add-to-cart" type="submit">
                 Buy with PayPal
@@ -390,6 +392,8 @@
         </p>
       </div>
     </footer>
-    <script src="script.js?v=13"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js?v=1"></script>
+    <script src="script.js?v=15"></script>
   </body>
 </html>

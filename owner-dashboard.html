@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>Nubohome | Owner Dashboard</title>
+    <link rel="icon" href="data:," />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css?v=14" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="index.html#top"><span class="brand-mark"></span>Nubohome</a>
+      <nav class="desktop-nav" aria-label="Owner navigation">
+        <a href="account.html">Customer view</a>
+        <a href="orders.html">Orders</a>
+        <a href="tracking.html">Tracking</a>
+        <a href="support.html">Support</a>
+      </nav>
+      <div class="header-actions">
+        <a class="header-link" href="index.html#shop">Shop now</a>
+      </div>
+    </header>
+
+    <main class="portal-page admin-page">
+      <section class="portal-hero">
+        <p class="product-kicker">Owner dashboard</p>
+        <h1>Manage orders and shipment status.</h1>
+        <p>Review orders, add tracking numbers, update shipment status, and export a shipping CSV.</p>
+      </section>
+      <section class="system-note">
+        <strong>Owner access</strong>
+        <span data-system-mode></span>
+      </section>
+
+      <section class="admin-actions">
+        <button class="button primary" type="button" data-export-orders>Export shipping CSV</button>
+        <span>Use this file as the first manual bridge to YunExpress while API credentials are not connected.</span>
+      </section>
+
+      <section class="admin-table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Order</th>
+              <th>Customer</th>
+              <th>Product</th>
+              <th>Payment</th>
+              <th>Status</th>
+              <th>Carrier</th>
+              <th>Tracking</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody data-admin-orders></tbody>
+        </table>
+      </section>
+    </main>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js?v=1"></script>
+    <script src="portal.js?v=2"></script>
+  </body>
+</html>

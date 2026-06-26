@@ -5,3 +5,6 @@ assets/*.png
 !assets/t-corner-guard-clean.png
 .DS_Store
 .superpowers/
+.env
+.env.local
+.env.*.local
