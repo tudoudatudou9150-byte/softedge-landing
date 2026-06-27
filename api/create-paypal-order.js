@@ -11,7 +11,17 @@ const packPrices = {
   20: "140.00"
 };
 
+const shippingAndDuties = {
+  1: "6.00",
+  4: "6.00",
+  8: "0.00",
+  16: "0.00",
+  20: "0.00"
+};
+
 const allowedStyles = new Set(["L-Shaped", "T-Shaped", "Round"]);
+
+const addMoney = (left, right) => (Number(left) + Number(right)).toFixed(2);
 
 const getPayPalBaseUrl = () => PAYPAL_BASE_URLS[process.env.PAYPAL_ENV || "sandbox"];
 
@@ -90,7 +100,9 @@ module.exports = async (req, res) => {
     }
 
     const orderNumber = `NH-${Date.now()}`;
-    const amount = packPrices[packSize];
+    const itemAmount = packPrices[packSize];
+    const shippingAmount = shippingAndDuties[packSize];
+    const amount = addMoney(itemAmount, shippingAmount);
     const productName = `Nubohome ${style === "Round" ? "Round" : `${style} Rounded`} Corner Guard`;
 
     const createdOrders = await supabaseRequest("orders", {
@@ -126,11 +138,32 @@ module.exports = async (req, res) => {
           {
             custom_id: localOrder.id,
             invoice_id: orderNumber,
-            description: `${productName} / ${packSize} pcs`,
+            description: `${productName} / ${packSize} pcs${Number(shippingAmount) > 0 ? " / shipping & duties included" : " / free shipping"}`,
             amount: {
               currency_code: "USD",
-              value: amount
-            }
+              value: amount,
+              breakdown: {
+                item_total: {
+                  currency_code: "USD",
+                  value: itemAmount
+                },
+                shipping: {
+                  currency_code: "USD",
+                  value: shippingAmount
+                }
+              }
+            },
+            items: [
+              {
+                name: productName,
+                description: `${packSize} pcs`,
+                quantity: "1",
+                unit_amount: {
+                  currency_code: "USD",
+                  value: itemAmount
+                }
+              }
+            ]
           }
         ],
         payment_source: {

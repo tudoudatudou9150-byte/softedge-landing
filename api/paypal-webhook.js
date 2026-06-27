@@ -3,6 +3,8 @@ const PAYPAL_BASE_URLS = {
   live: "https://api-m.paypal.com"
 };
 
+const { notifyOwnerForPaidOrder } = require("./order-email");
+
 const getPayPalBaseUrl = () => PAYPAL_BASE_URLS[process.env.PAYPAL_ENV || "sandbox"];
 
 const readJsonBody = (req) => new Promise((resolve, reject) => {
@@ -137,6 +139,12 @@ module.exports = async (req, res) => {
             event_date: new Date().toISOString().slice(0, 10)
           })
         });
+
+        try {
+          await notifyOwnerForPaidOrder({ order: localOrder, supabaseRequest });
+        } catch (emailError) {
+          console.error("Owner order notification failed:", emailError.message);
+        }
       }
     }
 

@@ -33,6 +33,19 @@ const getSelectedQuantity = () => {
 
 const getSelectedQuantityOption = () => document.querySelector(".quantity-options button.selected");
 
+const money = (value) => Number(value || 0);
+
+const getSelectedTotals = () => {
+  const selectedQuantity = getSelectedQuantityOption();
+  const itemPrice = money(selectedQuantity?.dataset.price || "112");
+  const shippingFee = money(selectedQuantity?.dataset.shippingFee || "0");
+  return {
+    itemPrice,
+    shippingFee,
+    totalPrice: itemPrice + shippingFee
+  };
+};
+
 const getCheckoutSelection = () => ({
   style: selectedStyle,
   packSize: Number(getSelectedQuantity())
@@ -77,16 +90,15 @@ const updatePaypalCheckout = () => {
 
   const quantity = selectedQuantity.dataset.qty || "16";
   const unit = quantity === "1" ? "pc" : "pcs";
-  const price = Number(selectedQuantity.dataset.price || "112");
-  const freeShipping = selectedQuantity.dataset.freeShipping === "true";
+  const { itemPrice, shippingFee } = getSelectedTotals();
 
   const productName = productTitle?.textContent || `${selectedStyle} Corner Guard`;
   paypalItemName.value = `Nubohome ${productName} / ${quantity} ${unit}`;
-  paypalAmount.value = price.toFixed(2);
+  paypalAmount.value = itemPrice.toFixed(2);
 
   if (paypalShipping) {
-    paypalShipping.disabled = !freeShipping;
-    paypalShipping.value = "0.00";
+    paypalShipping.disabled = false;
+    paypalShipping.value = shippingFee.toFixed(2);
   }
 };
 

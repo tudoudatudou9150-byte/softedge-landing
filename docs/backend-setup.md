@@ -43,9 +43,14 @@ PAYPAL_CLIENT_ID=
 PAYPAL_CLIENT_SECRET=
 PAYPAL_WEBHOOK_ID=
 SITE_URL=https://www.nubohome.net
+RESEND_API_KEY=
+ORDER_NOTIFICATION_EMAIL=wjyu@hebeizhongren.com
+ORDER_NOTIFICATION_FROM=Nubohome Orders <onboarding@resend.dev>
 ```
 
 Use `PAYPAL_ENV=sandbox` while testing and `PAYPAL_ENV=live` for real payments.
+
+`RESEND_API_KEY` enables owner email alerts after a PayPal payment is confirmed. Until the sending domain is verified in Resend, keep `ORDER_NOTIFICATION_FROM` on `onboarding@resend.dev` for testing, then switch it to an address on `nubohome.net`.
 
 ## 3. PayPal Developer
 
@@ -78,6 +83,7 @@ Copy the PayPal webhook ID into `PAYPAL_WEBHOOK_ID`.
   - Verifies the PayPal webhook signature.
   - Marks matching Supabase orders as paid.
   - Adds an order event.
+  - Sends a paid-order notification email to the owner when Resend is configured.
 
 ## 5. Owner Admin Access
 
