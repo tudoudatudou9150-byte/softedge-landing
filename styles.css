@@ -1110,6 +1110,18 @@ img {
   outline-offset: 2px;
 }
 
+.form-link {
+  color: var(--soft-dark);
+  font-size: 12px;
+  font-weight: 900;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.portal-form.hidden {
+  display: none;
+}
+
 .portal-form .button {
   margin-top: 8px;
   border: 0;
@@ -1298,6 +1310,97 @@ img {
   font-weight: 800;
 }
 
+.analytics-panel {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.analytics-panel article,
+.analytics-breakdown,
+.analytics-note {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+}
+
+.analytics-panel article {
+  padding: 18px;
+}
+
+.analytics-panel article span,
+.analytics-panel article small {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.analytics-panel article strong {
+  display: block;
+  margin: 8px 0;
+  color: var(--soft-dark);
+  font-size: 34px;
+  line-height: 1;
+}
+
+.analytics-breakdown {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  padding: 18px;
+}
+
+.analytics-breakdown h2 {
+  margin: 0 0 12px;
+  font-size: 16px;
+}
+
+.analytics-breakdown ul {
+  display: grid;
+  gap: 8px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.analytics-breakdown li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--mist);
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.analytics-breakdown li span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.analytics-breakdown li strong {
+  color: var(--ink);
+}
+
+.analytics-note {
+  grid-column: 1 / -1;
+  padding: 14px 16px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.analytics-note.error {
+  color: #9f2f24;
+  background: #fff4f1;
+}
+
 .admin-table-wrap {
   overflow-x: auto;
   padding: 8px;
@@ -1370,10 +1473,15 @@ img {
   .order-card,
   .tracking-head,
   .admin-actions,
+  .analytics-breakdown,
   .system-note {
     align-items: flex-start;
     grid-template-columns: 1fr;
     flex-direction: column;
+  }
+
+  .analytics-panel {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .hero {
@@ -1437,6 +1545,7 @@ img {
   .style-options,
   .quantity-options,
   .buy-summary,
+  .analytics-panel,
   .portal-form.two-column {
     grid-template-columns: 1fr;
   }

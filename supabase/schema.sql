@@ -60,15 +60,27 @@ create table if not exists public.order_events (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.page_views (
+  id uuid primary key default gen_random_uuid(),
+  visitor_id text not null,
+  path text not null,
+  referrer text not null default '',
+  user_agent text not null default '',
+  created_at timestamptz not null default now()
+);
+
 create index if not exists idx_addresses_user_id on public.addresses(user_id);
 create index if not exists idx_orders_user_id_created_at on public.orders(user_id, created_at desc);
 create index if not exists idx_orders_status_created_at on public.orders(fulfillment_status, created_at desc);
 create index if not exists idx_order_events_order_id_created_at on public.order_events(order_id, created_at);
+create index if not exists idx_page_views_created_at on public.page_views(created_at desc);
+create index if not exists idx_page_views_visitor_id on public.page_views(visitor_id);
 
 alter table public.profiles enable row level security;
 alter table public.addresses enable row level security;
 alter table public.orders enable row level security;
 alter table public.order_events enable row level security;
+alter table public.page_views enable row level security;
 
 drop policy if exists "Customers can read own profile" on public.profiles;
 drop policy if exists "Customers can update own profile" on public.profiles;
@@ -78,6 +90,8 @@ drop policy if exists "Customers can read own orders" on public.orders;
 drop policy if exists "Admins can update orders" on public.orders;
 drop policy if exists "Customers can read own order events" on public.order_events;
 drop policy if exists "Admins can manage order events" on public.order_events;
+drop policy if exists "Admins can read page views" on public.page_views;
+
 
 create or replace function public.is_admin()
 returns boolean
@@ -138,6 +152,10 @@ create policy "Admins can manage order events"
   on public.order_events for all
   using (public.is_admin())
   with check (public.is_admin());
+
+create policy "Admins can read page views"
+  on public.page_views for select
+  using (public.is_admin());
 
 create or replace function public.handle_new_user()
 returns trigger

@@ -29,26 +29,13 @@ const supabaseAuthRequest = async (path, options = {}, useServiceRole = false) =
 };
 
 const upsertProfile = async ({ userId, email, name }) => {
-  const existingResponse = await fetch(`${process.env.SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}&select=id`, {
-    headers: {
-      apikey: process.env.SUPABASE_SERVICE_ROLE_KEY,
-      Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`
-    }
-  });
-  if (!existingResponse.ok) {
-    const message = await existingResponse.text();
-    throw new Error(`Profile lookup failed: ${message}`);
-  }
-  const existing = await existingResponse.json();
-  if (existing.length) return;
-
   const response = await fetch(`${process.env.SUPABASE_URL}/rest/v1/profiles`, {
     method: "POST",
     headers: {
       apikey: process.env.SUPABASE_SERVICE_ROLE_KEY,
       Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
       "Content-Type": "application/json",
-      Prefer: "return=minimal"
+      Prefer: "resolution=merge-duplicates,return=minimal"
     },
     body: JSON.stringify({
       id: userId,
@@ -130,39 +117,28 @@ module.exports = async (req, res) => {
       return;
     }
 
-    const login = await passwordLogin(email, password);
-    if (login.ok) {
-      await upsertProfile({
-        userId: login.result.user.id,
-        email,
-        name: name || login.result.user.user_metadata?.full_name
-      });
-      res.status(200).json({ session: login.result, created: false });
-      return;
-    }
-
     const created = await createConfirmedUser({ email, password, name });
     if (!created.ok) {
       if (isExistingUserError(created.result)) {
-        res.status(401).json({ error: "The email or password is incorrect. Please check it and try again." });
+        res.status(409).json({ error: "This email already has an account. Please sign in or reset the password." });
         return;
       }
       res.status(created.status || 400).json({ error: getAuthErrorMessage(created.result) || "Could not create account." });
       return;
     }
 
-    const secondLogin = await passwordLogin(email, password);
-    if (!secondLogin.ok) {
-      res.status(secondLogin.status || 400).json({ error: secondLogin.result.message || "Account created, but sign-in failed." });
+    const login = await passwordLogin(email, password);
+    if (!login.ok) {
+      res.status(login.status || 400).json({ error: login.result.message || "Account created, but sign-in failed." });
       return;
     }
 
     await upsertProfile({
-      userId: secondLogin.result.user.id,
+      userId: login.result.user.id,
       email,
       name
     });
-    res.status(200).json({ session: secondLogin.result, created: true });
+    res.status(200).json({ session: login.result, created: true });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

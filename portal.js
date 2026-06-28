@@ -260,6 +260,135 @@ const bindAuthSwitchLinks = () => {
   });
 };
 
+const getPasswordResetRedirectUrl = () => {
+  const path = window.location.pathname.replace(/[^/]*$/, "reset-password.html");
+  return `${window.location.origin}${path}`;
+};
+
+const hasPasswordRecoveryToken = () => {
+  const params = new URLSearchParams(window.location.search);
+  const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+  return params.get("type") === "recovery"
+    || hashParams.get("type") === "recovery"
+    || params.has("code")
+    || hashParams.has("code")
+    || params.has("token_hash")
+    || hashParams.has("token_hash")
+    || hashParams.has("access_token");
+};
+
+const showPasswordUpdateForm = () => {
+  $("[data-password-reset-request]")?.classList.add("hidden");
+  $("[data-password-reset-update]")?.classList.remove("hidden");
+};
+
+const getPasswordResetParam = (name) => {
+  const params = new URLSearchParams(window.location.search);
+  const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+  return params.get(name) || hashParams.get(name) || "";
+};
+
+const clearPasswordResetUrl = () => {
+  if (!window.history?.replaceState) return;
+  window.history.replaceState({}, document.title, window.location.pathname);
+};
+
+const recoverPasswordSession = async () => {
+  const code = getPasswordResetParam("code");
+  if (code) {
+    const { data, error } = await supabaseClient.auth.exchangeCodeForSession(code);
+    if (!error) clearPasswordResetUrl();
+    return { session: data?.session, error };
+  }
+
+  const tokenHash = getPasswordResetParam("token_hash");
+  if (tokenHash) {
+    const { data, error } = await supabaseClient.auth.verifyOtp({
+      type: "recovery",
+      token_hash: tokenHash
+    });
+    if (!error) clearPasswordResetUrl();
+    return { session: data?.session, error };
+  }
+
+  const { data, error } = await supabaseClient.auth.getSession();
+  return { session: data?.session, error };
+};
+
+const bindPasswordResetForms = async () => {
+  const requestForm = $("[data-password-reset-request]");
+  const updateForm = $("[data-password-reset-update]");
+  if (!requestForm && !updateForm) return;
+
+  if (!isCloudMode && !isLocalPreview) {
+    requestForm?.querySelector("button")?.setAttribute("disabled", "disabled");
+    updateForm?.querySelector("button")?.setAttribute("disabled", "disabled");
+    return;
+  }
+
+  if (hasPasswordRecoveryToken()) {
+    showPasswordUpdateForm();
+    if (isCloudMode) {
+      setAuthMessage(updateForm, "Checking your reset link...");
+      const { session, error } = await recoverPasswordSession();
+      if (error || !session) {
+        setAuthMessage(updateForm, "This reset link has expired. Please request a new one.", "error");
+      } else {
+        setAuthMessage(updateForm, "Enter a new password for your account.", "success");
+      }
+    }
+  }
+
+  requestForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const email = String(new FormData(requestForm).get("email") || "").trim().toLowerCase();
+
+    setAuthMessage(requestForm, "");
+    setFormBusy(requestForm, true, "Sending...");
+    try {
+      if (!isValidEmail(email)) throw new Error("Please enter a valid email address.");
+      if (isCloudMode) {
+        const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+          redirectTo: getPasswordResetRedirectUrl()
+        });
+        if (error) throw error;
+      }
+      setAuthMessage(requestForm, "If an account exists for this email, a reset link has been sent.", "success");
+    } catch (error) {
+      setAuthMessage(requestForm, friendlyAuthError(error), "error");
+    } finally {
+      setFormBusy(requestForm, false);
+    }
+  });
+
+  updateForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const formData = new FormData(updateForm);
+    const password = String(formData.get("password") || "");
+    const confirmPassword = String(formData.get("confirmPassword") || "");
+
+    setAuthMessage(updateForm, "");
+    setFormBusy(updateForm, true, "Saving...");
+    try {
+      if (password.length < 6) throw new Error("Please use a password with at least 6 characters.");
+      if (password !== confirmPassword) throw new Error("The passwords do not match.");
+      if (isCloudMode) {
+        const { error } = await supabaseClient.auth.updateUser({ password });
+        if (error) throw error;
+        await supabaseClient.auth.signOut();
+      }
+      setAuthMessage(updateForm, "Password updated. Taking you back to sign in...", "success");
+      setTimeout(() => {
+        window.location.href = "login.html";
+      }, 1200);
+    } catch (error) {
+      setAuthMessage(updateForm, friendlyAuthError(error), "error");
+    } finally {
+      setFormBusy(updateForm, false);
+    }
+  });
+};
+
 const readPendingCheckout = () => {
   try {
     return JSON.parse(sessionStorage.getItem(PENDING_CHECKOUT_KEY) || localStorage.getItem(PENDING_CHECKOUT_KEY) || "null");
@@ -308,6 +437,15 @@ const continueToPayPalCheckout = async ({ session, profile, address }) => {
 
 const friendlyAuthError = (error) => {
   const message = String(error?.message || error || "").toLowerCase();
+  if (
+    message.includes("rate limit")
+    || message.includes("too many")
+    || message.includes("security purposes")
+    || message.includes("request this after")
+    || message.includes("wait")
+  ) {
+    return "Too many reset requests. Please wait a minute, then try again with the same email.";
+  }
   if (message.includes("invalid login credentials")) {
     return "The email or password is incorrect. Please check it and try again.";
   }
@@ -320,7 +458,7 @@ const friendlyAuthError = (error) => {
   if (message.includes("password") && message.includes("characters")) {
     return "Please use a password with at least 6 characters.";
   }
-  if (message.includes("email")) {
+  if (message.includes("invalid email")) {
     return "Please enter a valid email address.";
   }
   return error?.message || "Something went wrong. Please try again.";
@@ -355,12 +493,30 @@ const loginThroughApi = async ({ email, password, name = "" }) => {
   return result.session;
 };
 
-const signInOrCreateCloudAccount = async ({ email, password, name = "" }) => {
+const registerThroughApi = async ({ email, password, name = "" }) => {
+  const response = await fetch("/api/auth-register", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password, name })
+  });
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.error || "Account creation failed.");
+  if (!result.session?.access_token || !result.session?.refresh_token) {
+    throw new Error("Account creation failed. Please try again.");
+  }
+  const { error } = await supabaseClient.auth.setSession({
+    access_token: result.session.access_token,
+    refresh_token: result.session.refresh_token
+  });
+  if (error) throw error;
+  return result.session;
+};
+
+const signInCloudAccount = async ({ email, password }) => {
   const cleanEmail = String(email || "").trim().toLowerCase();
-  const cleanName = String(name || "").trim();
 
   if (window.location.protocol !== "file:") {
-    return loginThroughApi({ email: cleanEmail, password, name: cleanName });
+    return loginThroughApi({ email: cleanEmail, password });
   }
 
   const signInResult = await supabaseClient.auth.signInWithPassword({
@@ -369,12 +525,19 @@ const signInOrCreateCloudAccount = async ({ email, password, name = "" }) => {
   });
 
   if (!signInResult.error) {
-    await ensureCloudProfile(signInResult.data.session, cleanName);
+    await ensureCloudProfile(signInResult.data.session);
     return signInResult.data.session;
   }
 
-  if (signInResult.error.message !== "Invalid login credentials") {
-    throw signInResult.error;
+  throw signInResult.error;
+};
+
+const createCloudAccount = async ({ email, password, name = "" }) => {
+  const cleanEmail = String(email || "").trim().toLowerCase();
+  const cleanName = String(name || "").trim();
+
+  if (window.location.protocol !== "file:") {
+    return registerThroughApi({ email: cleanEmail, password, name: cleanName });
   }
 
   const signUpResult = await supabaseClient.auth.signUp({
@@ -662,7 +825,7 @@ const bindAuthForms = () => {
       try {
         validateAuthInput(email, password);
         if (isCloudMode) {
-          await signInOrCreateCloudAccount({ email, password, name });
+          await createCloudAccount({ email, password, name });
         } else {
           const store = readDemoStore();
           if (!store.users.some((user) => user.email === email)) {
@@ -697,7 +860,7 @@ const bindAuthForms = () => {
       try {
         validateAuthInput(email, password);
         if (isCloudMode) {
-          await signInOrCreateCloudAccount({ email, password });
+          await signInCloudAccount({ email, password });
         } else {
           const store = readDemoStore();
           if (!store.users.some((user) => user.email === email)) {
@@ -739,13 +902,13 @@ const bindAuthForms = () => {
 const getAdminOrders = async () => {
   if (!isCloudMode) {
     if (!isLocalPreview) {
-      throw new Error("Owner dashboard requires Supabase admin login before it can be used online.");
+      throw new Error("商家后台需要先使用管理员账号登录。");
     }
     return readDemoStore().orders;
   }
   const profile = await getCloudProfile();
   if (profile?.role !== "admin") {
-    throw new Error("Owner access only. Please sign in with the Nubohome admin account.");
+    throw new Error("仅商家管理员可访问，请使用 Nubohome 管理员账号登录。");
   }
   const { data, error } = await supabaseClient
     .from("orders")
@@ -753,6 +916,115 @@ const getAdminOrders = async () => {
     .order("created_at", { ascending: false });
   if (error) throw error;
   return data.map(normalizeOrder);
+};
+
+const statusLabels = {
+  pending: "待付款",
+  paid: "已付款",
+  failed: "付款失败",
+  refunded: "已退款",
+  processing: "处理中",
+  shipped: "已发货",
+  delivered: "已送达",
+  cancelled: "已取消",
+  Processing: "处理中",
+  Shipped: "已发货",
+  Delivered: "已送达",
+  Refunded: "已退款",
+  Paid: "已付款"
+};
+
+const statusText = (status) => statusLabels[status] || status;
+
+const renderAnalyticsList = (items, emptyText) => {
+  if (!items?.length) return `<p>${escapeHtml(emptyText)}</p>`;
+  return `
+    <ul>
+      ${items.map((item) => `<li><span>${escapeHtml(item.label)}</span><strong>${escapeHtml(item.count)}</strong></li>`).join("")}
+    </ul>
+  `;
+};
+
+const getOwnerAnalytics = async () => {
+  if (!isCloudMode) {
+    return {
+      totalViews: 1286,
+      last24Views: 73,
+      todayViews: 41,
+      uniqueVisitors: 392,
+      topPages: [
+        { label: "/", count: 864 },
+        { label: "/#shop", count: 219 },
+        { label: "/support.html", count: 43 }
+      ],
+      referrers: [
+        { label: "Direct / unknown", count: 712 },
+        { label: "google.com", count: 108 }
+      ]
+    };
+  }
+
+  const session = await getSession();
+  if (!session?.access_token) {
+    throw new Error("请先登录管理员账号后再查看后台数据。");
+  }
+
+  const response = await fetch("/api/owner-analytics", {
+    headers: {
+      Authorization: `Bearer ${session.access_token}`
+    }
+  });
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.error || "读取浏览统计失败。");
+  return result;
+};
+
+const renderOwnerAnalytics = async () => {
+  const root = $("[data-owner-analytics]");
+  if (!root) return;
+
+  try {
+    const analytics = await getOwnerAnalytics();
+    const setupNote = analytics.setupRequired
+      ? `<div class="analytics-note">统计数据表还没有连接。订单功能不受影响，连接后会从新访问开始累计。</div>`
+      : "";
+
+    root.innerHTML = `
+      <article>
+        <span>总浏览量</span>
+        <strong>${escapeHtml(analytics.totalViews)}</strong>
+        <small>网站累计页面浏览</small>
+      </article>
+      <article>
+        <span>过去 24 小时</span>
+        <strong>${escapeHtml(analytics.last24Views)}</strong>
+        <small>最近一天页面浏览</small>
+      </article>
+      <article>
+        <span>今日浏览</span>
+        <strong>${escapeHtml(analytics.todayViews)}</strong>
+        <small>按当前自然日统计</small>
+      </article>
+      <article>
+        <span>访客数</span>
+        <strong>${escapeHtml(analytics.uniqueVisitors)}</strong>
+        <small>按浏览器匿名去重</small>
+      </article>
+      <div class="analytics-breakdown">
+        <section>
+          <h2>热门页面</h2>
+          ${renderAnalyticsList(analytics.topPages, "暂无页面浏览数据")}
+        </section>
+        <section>
+          <h2>主要来源</h2>
+          ${renderAnalyticsList(analytics.referrers, "暂无来源数据")}
+        </section>
+      </div>
+      ${setupNote}
+    `;
+  } catch (error) {
+    root.innerHTML = `<div class="analytics-note error">浏览统计暂时无法读取：${escapeHtml(error.message)}</div>`;
+  }
 };
 
 const renderAdmin = async () => {
@@ -764,15 +1036,15 @@ const renderAdmin = async () => {
       <td><strong>${escapeHtml(order.orderNumber)}</strong><span>${escapeHtml(order.createdAt)}</span></td>
       <td>${escapeHtml(order.customerName)}<span>${escapeHtml(order.customerEmail)}</span></td>
       <td>${escapeHtml(order.product)}<span>${escapeHtml(order.pack)} · ${escapeHtml(order.amount)}</span></td>
-      <td>${escapeHtml(order.paymentStatus)}</td>
+      <td>${escapeHtml(statusText(order.paymentStatus))}</td>
       <td>
         <select data-admin-status="${escapeHtml(order.id)}">
-          ${["processing", "shipped", "delivered", "refunded"].map((status) => `<option value="${status}" ${order.fulfillmentStatus === status || order.fulfillmentStatus === status[0].toUpperCase() + status.slice(1) ? "selected" : ""}>${status}</option>`).join("")}
+          ${["processing", "shipped", "delivered", "refunded"].map((status) => `<option value="${status}" ${order.fulfillmentStatus === status || order.fulfillmentStatus === status[0].toUpperCase() + status.slice(1) ? "selected" : ""}>${statusText(status)}</option>`).join("")}
         </select>
       </td>
-      <td><input data-admin-carrier="${escapeHtml(order.id)}" value="${escapeHtml(order.carrier)}" placeholder="Carrier" /></td>
-      <td><input data-admin-tracking="${escapeHtml(order.id)}" value="${escapeHtml(order.trackingNumber)}" placeholder="Tracking number" /></td>
-      <td><button class="button secondary" data-admin-save="${escapeHtml(order.id)}" type="button">Save</button></td>
+      <td><input data-admin-carrier="${escapeHtml(order.id)}" value="${escapeHtml(order.carrier)}" placeholder="物流商" /></td>
+      <td><input data-admin-tracking="${escapeHtml(order.id)}" value="${escapeHtml(order.trackingNumber)}" placeholder="物流单号" /></td>
+      <td><button class="button secondary" data-admin-save="${escapeHtml(order.id)}" type="button">保存</button></td>
     </tr>
   `).join("");
 
@@ -818,8 +1090,8 @@ const renderAdmin = async () => {
         writeDemoStore(store);
       }
 
-      button.textContent = "Saved";
-      setTimeout(() => { button.textContent = "Save"; }, 1200);
+      button.textContent = "已保存";
+      setTimeout(() => { button.textContent = "保存"; }, 1200);
     });
   });
 };
@@ -830,15 +1102,15 @@ const bindOrderExport = () => {
   button.addEventListener("click", async () => {
     const orders = await getAdminOrders();
     const headers = [
-      "Order Number",
-      "Customer Name",
-      "Customer Email",
-      "Product",
-      "Pack Size",
-      "Amount",
-      "Carrier",
-      "Tracking Number",
-      "Fulfillment Status"
+      "订单号",
+      "客户姓名",
+      "客户邮箱",
+      "商品",
+      "套餐",
+      "金额",
+      "物流商",
+      "物流单号",
+      "发货状态"
     ];
     const rows = orders.map((order) => [
       order.orderNumber,
@@ -849,7 +1121,7 @@ const bindOrderExport = () => {
       order.amount,
       order.carrier,
       order.trackingNumber,
-      order.fulfillmentStatus
+      statusText(order.fulfillmentStatus)
     ]);
     const csv = [headers, ...rows]
       .map((row) => row.map((value) => `"${String(value || "").replaceAll('"', '""')}"`).join(","))
@@ -871,17 +1143,19 @@ const initPortal = async () => {
     renderSystemMode();
     bindAuthSwitchLinks();
     bindAuthForms();
+    await bindPasswordResetForms();
     await renderAccountSummary();
     await bindAddressForm();
     await renderOrders();
     await renderTracking();
+    await renderOwnerAnalytics();
     await renderAdmin();
     bindOrderExport();
   } catch (error) {
     const main = $("main") || document.body;
     const note = document.createElement("section");
     note.className = "system-note error-note";
-    note.innerHTML = `<strong>Something needs attention</strong><span>${escapeHtml(error.message)}</span>`;
+    note.innerHTML = `<strong>需要处理</strong><span>${escapeHtml(error.message)}</span>`;
     main.prepend(note);
   }
 };

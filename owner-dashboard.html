@@ -4,50 +4,72 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="robots" content="noindex,nofollow" />
-    <title>Nubohome | Owner Dashboard</title>
+    <title>Nubohome | 商家后台</title>
     <link rel="icon" href="data:," />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="styles.css?v=17" />
+    <link rel="stylesheet" href="styles.css?v=19" />
   </head>
   <body>
     <header class="site-header">
       <a class="brand" href="index.html#top"><span class="brand-mark"></span>Nubohome</a>
-      <nav class="desktop-nav" aria-label="Owner navigation">
-        <a href="account.html">Customer view</a>
-        <a href="orders.html">Orders</a>
-        <a href="tracking.html">Tracking</a>
-        <a href="support.html">Support</a>
+      <nav class="desktop-nav" aria-label="商家后台导航">
+        <a href="account.html">客户视图</a>
+        <a href="orders.html">订单</a>
+        <a href="tracking.html">物流</a>
+        <a href="support.html">客服</a>
       </nav>
       <div class="header-actions">
-        <a class="header-link" href="index.html#shop">Shop now</a>
+        <a class="header-link" href="index.html#shop">查看商品页</a>
       </div>
     </header>
 
     <main class="portal-page admin-page">
       <section class="portal-hero">
-        <p class="product-kicker">Owner dashboard</p>
-        <h1>Manage orders and shipment status.</h1>
-        <p>Review orders, add tracking numbers, update shipment status, and export a shipping CSV.</p>
+        <p class="product-kicker">商家后台</p>
+        <h1>管理订单、物流和网站浏览数据。</h1>
+        <p>查看网站浏览量、订单情况，填写物流单号，并导出发货表格。</p>
+      </section>
+      <section class="analytics-panel" data-owner-analytics>
+        <article>
+          <span>总浏览量</span>
+          <strong>--</strong>
+          <small>网站累计页面浏览</small>
+        </article>
+        <article>
+          <span>过去 24 小时</span>
+          <strong>--</strong>
+          <small>最近一天页面浏览</small>
+        </article>
+        <article>
+          <span>今日浏览</span>
+          <strong>--</strong>
+          <small>按当前自然日统计</small>
+        </article>
+        <article>
+          <span>访客数</span>
+          <strong>--</strong>
+          <small>按浏览器匿名去重</small>
+        </article>
       </section>
       <section class="admin-actions">
-        <button class="button primary" type="button" data-export-orders>Export shipping CSV</button>
-        <span>Use this file as the first manual bridge to YunExpress while API credentials are not connected.</span>
+        <button class="button primary" type="button" data-export-orders>导出发货 CSV</button>
+        <span>在物流 API 接入前，可以先用这个表格手动导入云途等物流系统。</span>
       </section>
 
       <section class="admin-table-wrap">
         <table class="admin-table">
           <thead>
             <tr>
-              <th>Order</th>
-              <th>Customer</th>
-              <th>Product</th>
-              <th>Payment</th>
-              <th>Status</th>
-              <th>Carrier</th>
-              <th>Tracking</th>
-              <th>Action</th>
+              <th>订单</th>
+              <th>客户</th>
+              <th>商品</th>
+              <th>付款</th>
+              <th>状态</th>
+              <th>物流商</th>
+              <th>物流单号</th>
+              <th>操作</th>
             </tr>
           </thead>
           <tbody data-admin-orders></tbody>
@@ -56,6 +78,6 @@
     </main>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase-config.js?v=2"></script>
-    <script src="portal.js?v=8"></script>
+    <script src="portal.js?v=12"></script>
   </body>
 </html>

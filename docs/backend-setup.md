@@ -30,6 +30,11 @@ window.NUBOHOME_SUPABASE = {
 
 Use `checkoutMode: "standard"` until PayPal REST credentials and Vercel environment variables are ready. Change it to `"api"` when the backend checkout is configured.
 
+For password resets, add the live site URL in Supabase:
+
+- Authentication > URL Configuration > Site URL: `https://www.nubohome.net`
+- Authentication > URL Configuration > Redirect URLs: `https://www.nubohome.net/reset-password.html`
+
 ## 2. Vercel Environment Variables
 
 Add these variables in Vercel Project Settings:
@@ -108,3 +113,27 @@ Because the browser is already logged into YunExpress, the next practical integr
 3. Paste tracking numbers back into Nubohome admin.
 
 After you obtain YunExpress API credentials, this can become fully automatic.
+
+## 7. Owner Analytics
+
+The owner dashboard reads private traffic totals from `public.page_views`.
+
+If analytics cards show that the statistics table is not connected yet, run the latest `supabase/schema.sql` in Supabase SQL Editor. The new table is:
+
+```sql
+public.page_views
+```
+
+Customer pages send anonymous page views to:
+
+```text
+POST /api/track-view
+```
+
+The owner dashboard reads totals from:
+
+```text
+GET /api/owner-analytics
+```
+
+Only admin users can read the dashboard aggregate endpoint.
