@@ -1,3 +1,5 @@
+const { convertUsd, getPricingContext } = require("./currency-utils");
+
 const PAYPAL_BASE_URLS = {
   sandbox: "https://api-m.sandbox.paypal.com",
   live: "https://api-m.paypal.com"
@@ -136,6 +138,10 @@ module.exports = async (req, res) => {
     const itemAmount = product.prices[packSize];
     const shippingAmount = product.shipping[packSize];
     const amount = addMoney(itemAmount, shippingAmount);
+    const pricingContext = getPricingContext(req);
+    const paypalItemAmount = convertUsd(itemAmount, pricingContext);
+    const paypalShippingAmount = convertUsd(shippingAmount, pricingContext);
+    const paypalAmount = addMoney(paypalItemAmount, paypalShippingAmount);
     const productName = product.name;
     const unitLabel = packSize === 1 && product.unit === "fan" ? "fan" : product.unit;
 
@@ -174,16 +180,16 @@ module.exports = async (req, res) => {
             invoice_id: orderNumber,
             description: `${productName} / ${packSize} ${unitLabel}${Number(shippingAmount) > 0 ? " / shipping & duties included" : " / free shipping"}`,
             amount: {
-              currency_code: "USD",
-              value: amount,
+              currency_code: pricingContext.currencyCode,
+              value: paypalAmount,
               breakdown: {
                 item_total: {
-                  currency_code: "USD",
-                  value: itemAmount
+                  currency_code: pricingContext.currencyCode,
+                  value: paypalItemAmount
                 },
                 shipping: {
-                  currency_code: "USD",
-                  value: shippingAmount
+                  currency_code: pricingContext.currencyCode,
+                  value: paypalShippingAmount
                 }
               }
             },
@@ -193,8 +199,8 @@ module.exports = async (req, res) => {
                 description: `${packSize} ${unitLabel}`,
                 quantity: "1",
                 unit_amount: {
-                  currency_code: "USD",
-                  value: itemAmount
+                  currency_code: pricingContext.currencyCode,
+                  value: paypalItemAmount
                 }
               }
             ]

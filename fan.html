@@ -54,7 +54,7 @@
             100-speed airflow, and free shipping included.
           </p>
           <div class="hero-actions">
-            <a class="button primary" href="#shop">Buy Now - $160</a>
+            <a class="button primary" href="#shop">Buy Now - <span data-money-usd="160">$160.00</span></a>
             <a class="button secondary" href="#details">See Details</a>
           </div>
           <div class="hero-proofs" aria-label="Product benefits">
@@ -75,7 +75,7 @@
         <a href="#details">100-speed airflow</a>
         <a href="#details">Large touch display</a>
         <a href="#details">Desk and wall use</a>
-        <a href="#shop">$160 shipping included</a>
+        <a href="#shop"><span data-money-usd="160">$160.00</span> shipping included</a>
       </section>
 
       <section class="section fan-detail-gallery" id="details">
@@ -206,7 +206,7 @@
             >
               <input type="hidden" name="cmd" value="_xclick" />
               <input type="hidden" name="business" value="wjyu@hebeizhongren.com" />
-              <input type="hidden" name="currency_code" value="USD" />
+              <input type="hidden" name="currency_code" id="paypal-currency" value="USD" />
               <input type="hidden" name="item_name" id="paypal-item-name" value="Nubohome Icy Cooling Loop Fan - White / 1 fan" />
               <input type="hidden" name="amount" id="paypal-amount" value="160.00" />
               <input type="hidden" name="quantity" value="1" />
@@ -302,7 +302,7 @@
         <div class="faq-grid">
           <article>
             <h3>Is shipping included?</h3>
-            <p>Yes. The listed $160 price includes shipping and duties for supported destinations.</p>
+            <p>Yes. The listed <span data-money-usd="160">$160.00</span> price includes shipping and duties for supported destinations.</p>
           </article>
           <article>
             <h3>Can it sit on a desk?</h3>
@@ -376,6 +376,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase-config.js?v=2"></script>
     <script src="analytics.js?v=1"></script>
-    <script src="script.js?v=23"></script>
+    <script src="currency.js?v=1"></script>
+    <script src="script.js?v=24"></script>
   </body>
 </html>

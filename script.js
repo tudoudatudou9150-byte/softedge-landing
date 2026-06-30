@@ -14,6 +14,7 @@ const paypalCheckout = document.querySelector("#paypal-checkout");
 const paypalItemName = document.querySelector("#paypal-item-name");
 const paypalAmount = document.querySelector("#paypal-amount");
 const paypalShipping = document.querySelector("#paypal-shipping");
+const paypalCurrency = document.querySelector("#paypal-currency") || document.querySelector('input[name="currency_code"]');
 const checkoutConfig = window.NUBOHOME_SUPABASE || {};
 const checkoutSupabase = window.supabase && checkoutConfig.url && checkoutConfig.anonKey
   ? window.supabase.createClient(checkoutConfig.url, checkoutConfig.anonKey)
@@ -21,6 +22,12 @@ const checkoutSupabase = window.supabase && checkoutConfig.url && checkoutConfig
 const PENDING_CHECKOUT_KEY = "nubohome_pending_checkout";
 
 let selectedStyle = document.querySelector(".style-options .style-option.selected")?.dataset.style || "L-Shaped";
+let pricingContext = window.NUBOHOME_PRICING_CONTEXT || {
+  currencyCode: "USD",
+  currencySymbol: "$",
+  exchangeRate: 1,
+  currencyLabel: "US dollars"
+};
 
 const checkoutResumeUrl = `${window.location.pathname.split("/").pop() || "corner-guards.html"}?checkout=resume#shop`;
 const addressNextUrl = `address.html?next=${encodeURIComponent(checkoutResumeUrl)}`;
@@ -34,6 +41,14 @@ const getSelectedQuantity = () => {
 const getSelectedQuantityOption = () => document.querySelector(".quantity-options button.selected");
 
 const money = (value) => Number(value || 0);
+
+const convertMoney = (usdValue) => money(usdValue) * Number(pricingContext.exchangeRate || 1);
+
+const formatMoney = (usdValue) => {
+  const formatter = window.NUBOHOME_FORMAT_MONEY;
+  if (typeof formatter === "function") return formatter(usdValue, pricingContext);
+  return `${pricingContext.currencySymbol || "$"}${convertMoney(usdValue).toFixed(2)}`;
+};
 
 const getSelectedUnit = (quantity) => {
   const selectedQuantity = getSelectedQuantityOption();
@@ -49,8 +64,37 @@ const getSelectedTotals = () => {
   return {
     itemPrice,
     shippingFee,
-    totalPrice: itemPrice + shippingFee
+    totalPrice: itemPrice + shippingFee,
+    convertedItemPrice: convertMoney(itemPrice),
+    convertedShippingFee: convertMoney(shippingFee),
+    convertedTotalPrice: convertMoney(itemPrice + shippingFee)
   };
+};
+
+const getShippingText = (option) => {
+  const price = money(option?.dataset.price);
+  const shippingFee = money(option?.dataset.shippingFee);
+  if (!shippingFee) return "Free shipping & duties included";
+  return `+${formatMoney(shippingFee)} shipping & duties included. Total at checkout: ${formatMoney(price + shippingFee)}`;
+};
+
+const updateQuantityOptionPrices = () => {
+  quantityOptions.forEach((option) => {
+    const price = money(option.dataset.price);
+    const compare = money(option.dataset.compare);
+    const priceNode = option.querySelector(".pack-price");
+    const shippingNode = option.querySelector(".pack-shipping");
+
+    if (priceNode) {
+      priceNode.innerHTML = compare > price
+        ? `<del>${formatMoney(compare)}</del> ${formatMoney(price)}`
+        : formatMoney(price);
+    }
+
+    if (shippingNode) {
+      shippingNode.textContent = getShippingText(option);
+    }
+  });
 };
 
 const getCheckoutSelection = () => ({
@@ -97,16 +141,36 @@ const updatePaypalCheckout = () => {
 
   const quantity = selectedQuantity.dataset.qty || "16";
   const unit = getSelectedUnit(quantity);
-  const { itemPrice, shippingFee } = getSelectedTotals();
+  const { convertedItemPrice, convertedShippingFee } = getSelectedTotals();
 
   const productName = productTitle?.textContent || `${selectedStyle} Corner Guard`;
   paypalItemName.value = `Nubohome ${productName} / ${quantity} ${unit}`;
-  paypalAmount.value = itemPrice.toFixed(2);
+  paypalAmount.value = convertedItemPrice.toFixed(2);
+
+  if (paypalCurrency) {
+    paypalCurrency.value = pricingContext.currencyCode || "USD";
+  }
 
   if (paypalShipping) {
     paypalShipping.disabled = false;
-    paypalShipping.value = shippingFee.toFixed(2);
+    paypalShipping.value = convertedShippingFee.toFixed(2);
   }
+};
+
+const updateDisplayedPricing = () => {
+  updateQuantityOptionPrices();
+
+  const selectedQuantity = getSelectedQuantityOption();
+  if (selectedQuantity && selectedPrice && selectedShipping) {
+    const price = money(selectedQuantity.dataset.price);
+    const compare = money(selectedQuantity.dataset.compare);
+    selectedPrice.innerHTML = compare > price
+      ? `<del>${formatMoney(compare)}</del> ${formatMoney(price)}`
+      : formatMoney(price);
+    selectedShipping.textContent = getShippingText(selectedQuantity);
+  }
+
+  updatePaypalCheckout();
 };
 
 styleOptions.forEach((option) => {
@@ -151,12 +215,10 @@ quantityOptions.forEach((option) => {
     const quantity = option.dataset.qty;
     const price = option.dataset.price;
     const compare = option.dataset.compare;
-    const shipping = option.dataset.shipping;
 
-    if (selectedPlan && selectedPrice && selectedShipping && quantity && price && compare && shipping) {
+    if (selectedPlan && selectedPrice && selectedShipping && quantity && price && compare) {
       updateSelectedPlan();
-      selectedPrice.innerHTML = `<del>$${compare}</del> $${price}`;
-      selectedShipping.textContent = shipping;
+      updateDisplayedPricing();
       updatePaypalCheckout();
     }
   });
@@ -235,7 +297,12 @@ paypalCheckout?.addEventListener("submit", async (event) => {
 });
 
 applyPendingCheckout();
-updatePaypalCheckout();
+updateDisplayedPricing();
+
+window.NUBOHOME_CURRENCY_READY?.then((context) => {
+  pricingContext = context;
+  updateDisplayedPricing();
+});
 
 if (new URLSearchParams(window.location.search).get("checkout") === "resume") {
   setTimeout(() => {

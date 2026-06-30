@@ -37,7 +37,7 @@ create table if not exists public.orders (
   customer_email text not null,
   customer_name text not null,
   product_name text not null,
-  style text not null check (style in ('L-Shaped', 'T-Shaped', 'Round')),
+  style text not null check (style in ('L-Shaped', 'T-Shaped', 'Round', 'Icy Cooling Loop Fan - White', 'Icy Cooling Loop Fan - Black')),
   pack_size integer not null check (pack_size in (1, 4, 8, 16, 20)),
   amount_usd numeric(10, 2) not null check (amount_usd >= 0),
   payment_status text not null default 'pending' check (payment_status in ('pending', 'paid', 'failed', 'refunded')),
