@@ -114,6 +114,7 @@ let state = loadState();
 let editing = false;
 let activeEntryType = "";
 let activeEntryDefaults = {};
+let activeEntryId = "";
 let pendingQuickAdjust = false;
 let syncReady = false;
 let syncTimer = 0;
@@ -644,6 +645,23 @@ function addInternalProject(memberId = "") {
   });
 }
 
+function editInternalProject(projectId) {
+  const project = state.projects.find((item) => item.id === projectId);
+  if (!project) return;
+
+  const ownerIds = getOwnerIds(project);
+  openEntry(
+    "internalProject",
+    {
+      ...project,
+      ownerIds,
+      ownerName: ownerIds.map(memberName).join("、") || "未分配",
+      editingId: project.id,
+    },
+    project.id
+  );
+}
+
 function deleteRequest(requestId) {
   const request = state.requests.find((item) => item.id === requestId);
   if (!request) return;
@@ -845,6 +863,12 @@ function renderInternalBoard() {
     });
   });
 
+  selectors.internalBoard.querySelectorAll("[data-edit-internal]").forEach((button) => {
+    button.addEventListener("click", () => {
+      editInternalProject(button.dataset.editInternal);
+    });
+  });
+
   selectors.internalBoard.querySelectorAll("[data-delete-internal]").forEach((button) => {
     button.addEventListener("click", () => {
       deleteProject(button.dataset.deleteInternal);
@@ -873,7 +897,10 @@ function renderInternalColumn(title, projects, memberId) {
                         <h3>${project.name}</h3>
                         ${
                           editing
-                            ? `<button class="inline-danger" data-delete-internal="${project.id}" type="button">删除</button>`
+                            ? `<div class="inline-actions">
+                                <button class="inline-edit" data-edit-internal="${project.id}" type="button">修改</button>
+                                <button class="inline-danger" data-delete-internal="${project.id}" type="button">删除</button>
+                              </div>`
                             : ""
                         }
                       </div>
@@ -1243,9 +1270,10 @@ function saveQuickEvent() {
   state.events.push(event);
 }
 
-function openEntry(type, defaults = {}) {
+function openEntry(type, defaults = {}, editingId = "") {
   activeEntryType = type;
   activeEntryDefaults = defaults;
+  activeEntryId = editingId;
   const configs = {
     project: {
       kicker: "项目跟进",
@@ -1263,10 +1291,11 @@ function openEntry(type, defaults = {}) {
     },
     internalProject: {
       kicker: "内部安排",
-      title: `新增${defaults.ownerName || "成员"}安排`,
+      title: `${editingId ? "修改" : "新增"}${defaults.ownerName || "成员"}安排`,
       fields: [
         ["name", "安排内容", "text"],
         ["type", "内容类型", "text"],
+        ...(editingId ? [["ownerIds", "成员", "memberMulti"]] : []),
         ["day", "安排日期", "day"],
         ["units", "内容条数", "number"],
         ["status", "状态", "projectStatus"],
@@ -1382,7 +1411,7 @@ function renderSelect(name, label, options, className) {
 function saveEntry() {
   const formData = new FormData(document.querySelector("#entry-form"));
   const entry = Object.fromEntries(formData.entries());
-  entry.id = `${activeEntryType}-${Date.now()}`;
+  entry.id = activeEntryId || `${activeEntryType}-${Date.now()}`;
 
   if ("units" in entry) entry.units = Number(entry.units || 0);
   if ("day" in entry) entry.day = Number(entry.day || 1);
@@ -1406,17 +1435,24 @@ function saveEntry() {
   if (activeEntryType === "internalProject") {
     entry.day = Number(entry.day || 1);
     entry.due = dayLabels[entry.day - 1] || "本周";
-    entry.ownerIds = activeEntryDefaults.ownerIds || [];
+    entry.ownerIds = formData.has("ownerIds") ? formData.getAll("ownerIds") : activeEntryDefaults.ownerIds || [];
     entry.ownerId = entry.ownerIds[0] || "";
   }
 
   if (activeEntryType === "project") state.projects.push(entry);
-  if (activeEntryType === "internalProject") state.projects.push(entry);
+  if (activeEntryType === "internalProject") {
+    if (activeEntryId) {
+      state.projects = state.projects.map((project) => (project.id === activeEntryId ? entry : project));
+    } else {
+      state.projects.push(entry);
+    }
+  }
   if (activeEntryType === "request") state.requests.push(entry);
   if (activeEntryType === "event") state.events.push(entry);
 
   saveState();
   selectors.entryDialog.close();
+  activeEntryId = "";
   render();
   showToast("已保存，产能已重新计算");
 }

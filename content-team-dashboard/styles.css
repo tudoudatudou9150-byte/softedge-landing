@@ -721,15 +721,35 @@ tr:last-child td {
   line-height: 1.45;
 }
 
+.inline-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.inline-edit,
 .inline-danger {
   border: 0;
   border-radius: 999px;
-  background: #fff0ed;
-  color: #b94731;
   padding: 4px 8px;
   font-size: 11px;
   font-weight: 900;
   cursor: pointer;
+}
+
+.inline-edit {
+  background: #ecfbf5;
+  color: #176b59;
+}
+
+.inline-edit:hover {
+  background: #dcf7ed;
+}
+
+.inline-danger {
+  background: #fff0ed;
+  color: #b94731;
 }
 
 .inline-danger:hover {
