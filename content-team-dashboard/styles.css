@@ -785,7 +785,7 @@ tr:last-child td {
 
 .archive-summary {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
   gap: 10px;
 }
 
@@ -809,6 +809,94 @@ tr:last-child td {
   margin-top: 7px;
   font-size: 28px;
   line-height: 1;
+}
+
+.archive-summary small {
+  display: block;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.compact-filter {
+  min-width: 220px;
+}
+
+.week-archive-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.week-archive-summary article {
+  border: 1px solid rgba(207, 225, 217, 0.9);
+  border-radius: 8px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fcfa 100%);
+  padding: 12px;
+}
+
+.week-archive-summary span,
+.week-archive-summary small {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.week-archive-summary strong {
+  display: block;
+  margin: 7px 0 5px;
+  font-size: 22px;
+  line-height: 1;
+}
+
+.week-archive {
+  display: grid;
+  gap: 18px;
+}
+
+.week-archive section {
+  display: grid;
+  gap: 10px;
+}
+
+.week-archive h3 {
+  margin: 0;
+  font-size: 17px;
+}
+
+.week-card-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.week-card {
+  display: grid;
+  gap: 7px;
+  border: 1px solid rgba(207, 225, 217, 0.9);
+  border-left: 4px solid var(--mint);
+  border-radius: 8px;
+  background: #fff;
+  padding: 12px;
+}
+
+.week-card h3,
+.week-card p {
+  margin: 0;
+}
+
+.week-card h3 {
+  font-size: 14px;
+}
+
+.week-card p,
+.week-card small {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 .history-card {
@@ -1207,6 +1295,11 @@ body.editing .panel.edit-only {
   .metric-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .week-archive-summary,
+  .week-card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 720px) {
@@ -1241,6 +1334,8 @@ body.editing .panel.edit-only {
   .history-shell .archive-hero .archive-summary,
   .history-filters,
   .archive-summary,
+  .week-archive-summary,
+  .week-card-grid,
   .detail-grid,
   .member-manager,
   .inline-form,

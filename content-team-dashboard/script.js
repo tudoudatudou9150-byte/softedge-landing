@@ -1,6 +1,6 @@
 const STORAGE_KEY = "content-team-dashboard-preview";
 const EDIT_PASSWORD = "content2026";
-const DATA_VERSION = 10;
+const DATA_VERSION = 11;
 const CURRENT_WEEK_KEY = getWeekKey(new Date());
 const SUPABASE_URL = "https://vcxetbbpigobkekqzmoy.supabase.co";
 const SUPABASE_KEY = "sb_publishable_n6nVRvL9i5DgDUeEMp-ikw_TszSFoiF";
@@ -108,6 +108,7 @@ const defaultState = {
       note: "本周拍摄产能不足",
     },
   ],
+  weeklyArchives: [],
 };
 
 let state = loadState();
@@ -274,6 +275,7 @@ function migrateState(parsed) {
   }
   migrated.members = parsed.members || defaultState.members;
   migrated.events = parsed.events || defaultState.events;
+  migrated.weeklyArchives = parsed.weeklyArchives || [];
   migrated.projects = (parsed.projects || defaultState.projects).map((project) => {
     const ownerIds = project.ownerIds || (project.ownerId ? [project.ownerId] : []);
     return {
@@ -320,6 +322,7 @@ function getWeekKey(date) {
 function autoResetWeeklySchedule(nextState) {
   if (nextState.week.currentWeekKey === CURRENT_WEEK_KEY) return;
 
+  archiveWeekSchedule(nextState, nextState.week.currentWeekKey);
   nextState.projects = [];
   nextState.events = [];
   nextState.requests = nextState.requests.map((request) => {
@@ -345,6 +348,54 @@ function autoResetWeeklySchedule(nextState) {
   });
   nextState.week.currentWeekKey = CURRENT_WEEK_KEY;
   nextState.week.note = "已自动进入新一周，未完成需求保留在需求池。";
+}
+
+function archiveWeekSchedule(nextState, weekKey) {
+  if (!weekKey) return;
+  const archive = createWeekArchive(nextState, weekKey, "历史周记录");
+  if (!archive.projects.length && !archive.requests.length && !archive.events.length) return;
+
+  const existingArchives = nextState.weeklyArchives || [];
+  nextState.weeklyArchives = [
+    ...existingArchives.filter((item) => item.weekKey !== weekKey),
+    archive,
+  ];
+}
+
+function createWeekArchive(sourceState, weekKey, label = "本周实时记录") {
+  const week = {
+    ...(sourceState.week || {}),
+    currentWeekKey: weekKey,
+  };
+  const members = structuredClone(sourceState.members || []);
+  const projects = (sourceState.projects || []).map((project) => ({
+    ...project,
+    ownerIds: getOwnerIds(project),
+  }));
+  const requests = (sourceState.requests || [])
+    .filter((request) => ["已接收", "排期中", "已完成"].includes(request.status) && request.weekKey === weekKey)
+    .map((request) => ({
+      ...request,
+      assigneeIds: getAssigneeIds(request),
+    }));
+  const events = structuredClone(sourceState.events || []);
+
+  return {
+    id: `week-${weekKey}`,
+    label,
+    weekKey,
+    archivedAt: getDateKey(new Date()),
+    week,
+    members,
+    projects,
+    requests,
+    events,
+    summary: {
+      projectUnits: projects.reduce((total, project) => total + Number(project.units || 0), 0),
+      requestUnits: requests.reduce((total, request) => total + Number(request.units || 0), 0),
+      eventUnits: events.reduce((total, event) => total + Number(event.units || 0), 0),
+    },
+  };
 }
 
 function saveState() {

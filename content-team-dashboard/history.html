@@ -3,15 +3,15 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>历史需求记录</title>
-    <meta name="description" content="内容团队历史需求收录、筛选与详情查看。" />
+    <title>历史记录</title>
+    <meta name="description" content="内容团队历史需求、每周排期与日程记录查看。" />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <header class="app-header">
       <div>
         <p class="eyebrow">内容团队历史库</p>
-        <h1>历史需求记录</h1>
+        <h1>历史记录</h1>
       </div>
       <div class="header-actions">
         <a class="ghost-button button-link" href="index.html">返回看板</a>
@@ -21,10 +21,25 @@
     <main class="app-shell history-shell">
       <section class="status-hero archive-hero">
         <div>
-          <h2>团队做过的内容需求，统一收录在这里</h2>
-          <p class="status-copy">已完成与归档历史会沉淀到历史库，方便后续复盘产出、追溯需求文档和查看不同渠道的内容投入。</p>
+          <h2>团队做过的内容需求和每周安排，统一收录在这里</h2>
+          <p class="status-copy">已完成与归档历史会沉淀到历史库；每周排期会在进入新一周前自动归档，方便按日期复盘当周做过什么。</p>
           <div class="archive-summary" id="archive-summary"></div>
         </div>
+      </section>
+
+      <section class="panel">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">按周查看</p>
+            <h2>某一周做过什么</h2>
+          </div>
+          <label class="compact-filter">
+            选择日期
+            <input id="week-date" type="date" />
+          </label>
+        </div>
+        <div class="week-archive-summary" id="week-summary"></div>
+        <div class="week-archive" id="week-results"></div>
       </section>
 
       <section class="panel">
