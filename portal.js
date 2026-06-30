@@ -66,6 +66,25 @@ const demoStore = {
         { label: "Shipped", detail: "Tracking number added by Nubohome.", date: "2026-06-22" },
         { label: "In transit", detail: "Package is moving through the carrier network.", date: "2026-06-24" }
       ]
+    },
+    {
+      id: "NH-10011",
+      orderNumber: "NH-10011",
+      customerEmail: "customer@example.com",
+      customerName: "Demo Customer",
+      product: "Nubohome Icy Cooling Loop Fan - White",
+      pack: "1 fan",
+      amount: "$160.00",
+      paymentStatus: "Paid",
+      fulfillmentStatus: "Processing",
+      carrier: "",
+      trackingNumber: "",
+      createdAt: "2026-06-30",
+      address: "88 Sample Street, Apartment 12, Melbourne, VIC 3000, Australia",
+      timeline: [
+        { label: "Order paid", detail: "Payment confirmed by PayPal.", date: "2026-06-30" },
+        { label: "Preparing shipment", detail: "Nubohome is preparing your order.", date: "2026-06-30" }
+      ]
     }
   ]
 };
@@ -140,13 +159,21 @@ const formatAddress = (address) => {
   ].filter(Boolean).join(", ");
 };
 
+const formatPackSize = (order) => {
+  const productName = String(order.product_name || order.product || "");
+  if (productName.includes("Loop Fan")) {
+    return `${order.pack_size || 1} ${Number(order.pack_size || 1) === 1 ? "fan" : "fans"}`;
+  }
+  return `${order.pack_size} pcs`;
+};
+
 const normalizeOrder = (order) => ({
   id: order.id,
   orderNumber: order.order_number || order.id,
   customerEmail: order.customer_email,
   customerName: order.customer_name,
   product: order.product_name,
-  pack: `${order.pack_size} pcs`,
+  pack: formatPackSize(order),
   amount: `$${Number(order.amount_usd || 0).toFixed(2)}`,
   paymentStatus: order.payment_status,
   fulfillmentStatus: order.fulfillment_status,
@@ -413,8 +440,12 @@ const isCheckoutResumeUrl = (value = "") => {
 
 const continueToPayPalCheckout = async ({ session, profile, address }) => {
   const pending = readPendingCheckout() || {};
-  const style = ["L-Shaped", "T-Shaped", "Round"].includes(pending.style) ? pending.style : "L-Shaped";
-  const packSize = [1, 4, 8, 16, 20].includes(Number(pending.packSize)) ? Number(pending.packSize) : 16;
+  const allowedStyles = ["L-Shaped", "T-Shaped", "Round", "Icy Cooling Loop Fan - White", "Icy Cooling Loop Fan - Black"];
+  const style = allowedStyles.includes(pending.style) ? pending.style : "L-Shaped";
+  const isFan = style.startsWith("Icy Cooling Loop Fan");
+  const allowedPackSizes = isFan ? [1] : [1, 4, 8, 16, 20];
+  const fallbackPackSize = isFan ? 1 : 16;
+  const packSize = allowedPackSizes.includes(Number(pending.packSize)) ? Number(pending.packSize) : fallbackPackSize;
 
   const response = await fetch("/api/create-paypal-order", {
     method: "POST",

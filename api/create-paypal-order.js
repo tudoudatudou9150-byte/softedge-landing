@@ -3,7 +3,7 @@ const PAYPAL_BASE_URLS = {
   live: "https://api-m.paypal.com"
 };
 
-const packPrices = {
+const cornerPackPrices = {
   1: "7.00",
   4: "28.00",
   8: "56.00",
@@ -11,7 +11,7 @@ const packPrices = {
   20: "140.00"
 };
 
-const shippingAndDuties = {
+const cornerShippingAndDuties = {
   1: "6.00",
   4: "6.00",
   8: "0.00",
@@ -19,7 +19,38 @@ const shippingAndDuties = {
   20: "0.00"
 };
 
-const allowedStyles = new Set(["L-Shaped", "T-Shaped", "Round"]);
+const productCatalog = {
+  "L-Shaped": {
+    name: "Nubohome L-Shaped Rounded Corner Guard",
+    unit: "pcs",
+    prices: cornerPackPrices,
+    shipping: cornerShippingAndDuties
+  },
+  "T-Shaped": {
+    name: "Nubohome T-Shaped Rounded Corner Guard",
+    unit: "pcs",
+    prices: cornerPackPrices,
+    shipping: cornerShippingAndDuties
+  },
+  Round: {
+    name: "Nubohome Round Corner Guard",
+    unit: "pcs",
+    prices: cornerPackPrices,
+    shipping: cornerShippingAndDuties
+  },
+  "Icy Cooling Loop Fan - White": {
+    name: "Nubohome Icy Cooling Loop Fan - White",
+    unit: "fan",
+    prices: { 1: "160.00" },
+    shipping: { 1: "0.00" }
+  },
+  "Icy Cooling Loop Fan - Black": {
+    name: "Nubohome Icy Cooling Loop Fan - Black",
+    unit: "fan",
+    prices: { 1: "160.00" },
+    shipping: { 1: "0.00" }
+  }
+};
 
 const addMoney = (left, right) => (Number(left) + Number(right)).toFixed(2);
 
@@ -89,7 +120,9 @@ module.exports = async (req, res) => {
     const style = body.style;
     const packSize = Number(body.packSize);
 
-    if (!allowedStyles.has(style) || !packPrices[packSize]) {
+    const product = productCatalog[style];
+
+    if (!product || !product.prices[packSize]) {
       res.status(400).json({ error: "Invalid product selection" });
       return;
     }
@@ -100,10 +133,11 @@ module.exports = async (req, res) => {
     }
 
     const orderNumber = `NH-${Date.now()}`;
-    const itemAmount = packPrices[packSize];
-    const shippingAmount = shippingAndDuties[packSize];
+    const itemAmount = product.prices[packSize];
+    const shippingAmount = product.shipping[packSize];
     const amount = addMoney(itemAmount, shippingAmount);
-    const productName = `Nubohome ${style === "Round" ? "Round" : `${style} Rounded`} Corner Guard`;
+    const productName = product.name;
+    const unitLabel = packSize === 1 && product.unit === "fan" ? "fan" : product.unit;
 
     const createdOrders = await supabaseRequest("orders", {
       method: "POST",
@@ -138,7 +172,7 @@ module.exports = async (req, res) => {
           {
             custom_id: localOrder.id,
             invoice_id: orderNumber,
-            description: `${productName} / ${packSize} pcs${Number(shippingAmount) > 0 ? " / shipping & duties included" : " / free shipping"}`,
+            description: `${productName} / ${packSize} ${unitLabel}${Number(shippingAmount) > 0 ? " / shipping & duties included" : " / free shipping"}`,
             amount: {
               currency_code: "USD",
               value: amount,
@@ -156,7 +190,7 @@ module.exports = async (req, res) => {
             items: [
               {
                 name: productName,
-                description: `${packSize} pcs`,
+                description: `${packSize} ${unitLabel}`,
                 quantity: "1",
                 unit_amount: {
                   currency_code: "USD",

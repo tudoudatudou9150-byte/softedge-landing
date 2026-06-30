@@ -10,6 +10,14 @@ const escapeHtml = (value) => String(value || "")
 
 const formatMoney = (value) => `$${Number(value || 0).toFixed(2)}`;
 
+const formatPackSize = (order) => {
+  const productName = String(order.product_name || "");
+  if (productName.includes("Loop Fan")) {
+    return `${order.pack_size} ${Number(order.pack_size) === 1 ? "fan" : "fans"}`;
+  }
+  return `${order.pack_size} pcs`;
+};
+
 const sendResendEmail = async ({ to, subject, html, text }) => {
   if (!process.env.RESEND_API_KEY) {
     console.warn("Skipping owner order email: RESEND_API_KEY is not configured.");
@@ -65,7 +73,7 @@ const buildOrderEmail = (order) => {
     ["Order number", orderNumber],
     ["Customer", `${order.customer_name || ""} <${order.customer_email || ""}>`],
     ["Product", order.product_name],
-    ["Pack size", `${order.pack_size} pcs`],
+    ["Pack size", formatPackSize(order)],
     ["Amount paid", formatMoney(order.amount_usd)],
     ["Payment status", order.payment_status],
     ["PayPal order ID", order.paypal_order_id],

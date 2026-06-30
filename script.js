@@ -20,9 +20,9 @@ const checkoutSupabase = window.supabase && checkoutConfig.url && checkoutConfig
   : null;
 const PENDING_CHECKOUT_KEY = "nubohome_pending_checkout";
 
-let selectedStyle = "L-Shaped";
+let selectedStyle = document.querySelector(".style-options .style-option.selected")?.dataset.style || "L-Shaped";
 
-const checkoutResumeUrl = "index.html?checkout=resume#shop";
+const checkoutResumeUrl = `${window.location.pathname.split("/").pop() || "corner-guards.html"}?checkout=resume#shop`;
 const addressNextUrl = `address.html?next=${encodeURIComponent(checkoutResumeUrl)}`;
 const loginNextUrl = `login.html?next=${encodeURIComponent(addressNextUrl)}`;
 
@@ -34,6 +34,13 @@ const getSelectedQuantity = () => {
 const getSelectedQuantityOption = () => document.querySelector(".quantity-options button.selected");
 
 const money = (value) => Number(value || 0);
+
+const getSelectedUnit = (quantity) => {
+  const selectedQuantity = getSelectedQuantityOption();
+  const singular = selectedQuantity?.dataset.unitSingular || "pc";
+  const plural = selectedQuantity?.dataset.unitPlural || "pcs";
+  return String(quantity) === "1" ? singular : plural;
+};
 
 const getSelectedTotals = () => {
   const selectedQuantity = getSelectedQuantityOption();
@@ -80,7 +87,7 @@ const updateSelectedPlan = () => {
   if (!selectedPlan) return;
 
   const quantity = getSelectedQuantity();
-  const unit = quantity === "1" ? "pc" : "pcs";
+  const unit = getSelectedUnit(quantity);
   selectedPlan.textContent = `${selectedStyle} / ${quantity} ${unit}`;
 };
 
@@ -89,7 +96,7 @@ const updatePaypalCheckout = () => {
   if (!selectedQuantity || !paypalItemName || !paypalAmount) return;
 
   const quantity = selectedQuantity.dataset.qty || "16";
-  const unit = quantity === "1" ? "pc" : "pcs";
+  const unit = getSelectedUnit(quantity);
   const { itemPrice, shippingFee } = getSelectedTotals();
 
   const productName = productTitle?.textContent || `${selectedStyle} Corner Guard`;
