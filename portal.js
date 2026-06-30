@@ -74,7 +74,7 @@ const demoStore = {
       customerName: "Demo Customer",
       product: "Nubohome Icy Cooling Loop Fan - White",
       pack: "1 fan",
-      amount: "$160.00",
+      amount: "$39.00",
       paymentStatus: "Paid",
       fulfillmentStatus: "Processing",
       carrier: "",

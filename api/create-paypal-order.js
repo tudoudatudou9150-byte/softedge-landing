@@ -43,13 +43,13 @@ const productCatalog = {
   "Icy Cooling Loop Fan - White": {
     name: "Nubohome Icy Cooling Loop Fan - White",
     unit: "fan",
-    prices: { 1: "160.00" },
+    prices: { 1: "39.00" },
     shipping: { 1: "0.00" }
   },
   "Icy Cooling Loop Fan - Black": {
     name: "Nubohome Icy Cooling Loop Fan - Black",
     unit: "fan",
-    prices: { 1: "160.00" },
+    prices: { 1: "39.00" },
     shipping: { 1: "0.00" }
   }
 };
