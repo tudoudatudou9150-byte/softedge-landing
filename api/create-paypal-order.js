@@ -7,10 +7,10 @@ const PAYPAL_BASE_URLS = {
 
 const cornerPackPrices = {
   1: "7.00",
-  4: "28.00",
-  8: "56.00",
-  16: "112.00",
-  20: "140.00"
+  4: "21.00",
+  8: "49.00",
+  16: "105.00",
+  20: "126.00"
 };
 
 const cornerShippingAndDuties = {

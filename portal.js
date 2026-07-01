@@ -35,7 +35,7 @@ const demoStore = {
       customerName: "Demo Customer",
       product: "Nubohome L-Shaped Rounded Corner Guard",
       pack: "16 pcs",
-      amount: "$112.00",
+      amount: "$105.00",
       paymentStatus: "Paid",
       fulfillmentStatus: "Processing",
       carrier: "",
