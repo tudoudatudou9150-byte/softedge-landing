@@ -721,6 +721,13 @@ tr:last-child td {
   line-height: 1.45;
 }
 
+.table-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .inline-actions {
   display: inline-flex;
   align-items: center;

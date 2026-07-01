@@ -1,6 +1,6 @@
 const STORAGE_KEY = "content-team-dashboard-preview";
 const EDIT_PASSWORD = "content2026";
-const DATA_VERSION = 11;
+const DATA_VERSION = 12;
 const CURRENT_WEEK_KEY = getWeekKey(new Date());
 const SUPABASE_URL = "https://vcxetbbpigobkekqzmoy.supabase.co";
 const SUPABASE_KEY = "sb_publishable_n6nVRvL9i5DgDUeEMp-ikw_TszSFoiF";
@@ -294,6 +294,7 @@ function migrateState(parsed) {
       weekKey: request.weekKey ?? (["已接收", "排期中", "已完成"].includes(request.status) ? migrated.week.currentWeekKey : ""),
     };
   });
+  applyAutomaticProjectCompletion(migrated);
   autoResetWeeklySchedule(migrated);
   return migrated;
 }
@@ -399,6 +400,7 @@ function createWeekArchive(sourceState, weekKey, label = "本周实时记录") {
 }
 
 function saveState() {
+  applyAutomaticProjectCompletion(state);
   state.week.updatedAt = new Date().toLocaleString("zh-CN", {
     month: "2-digit",
     day: "2-digit",
@@ -442,6 +444,27 @@ function isPastWorkday(day) {
   return getWeekdayDate(day) < today;
 }
 
+function isPastWorkdayInState(sourceState, day) {
+  const date = new Date(`${sourceState.week?.currentWeekKey || CURRENT_WEEK_KEY}T00:00:00`);
+  date.setDate(date.getDate() + Number(day || 1) - 1);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return date < today;
+}
+
+function applyAutomaticProjectCompletion(nextState = state) {
+  nextState.projects = (nextState.projects || []).map((project) => {
+    const projectDay = Number(project.day || 0);
+    if (!projectDay || project.status === "已完成") return project;
+    if (!isPastWorkdayInState(nextState, projectDay)) return project;
+    return {
+      ...project,
+      status: "已完成",
+      completedAt: project.completedAt || getDateKey(new Date()),
+    };
+  });
+}
+
 function getAutoUrgency(request) {
   if (daysUntilDue(request.due) <= 1) return "紧急";
   if (request.channel === "官网") return "优先";
@@ -474,6 +497,7 @@ function getScheduledItems() {
   }));
   const syncedRequests = state.requests.filter(isRequestScheduled).map((request) => ({
     id: `request-${request.id}`,
+    requestId: request.id,
     name: request.name,
     type: `${request.channel || "未选择渠道"} · ${request.type}`,
     ownerId: request.assigneeId,
@@ -683,6 +707,19 @@ function deleteProject(projectId) {
   showToast("项目已删除");
 }
 
+function editProject(projectId) {
+  const project = state.projects.find((item) => item.id === projectId);
+  if (!project) return;
+  openEntry(
+    "project",
+    {
+      ...project,
+      ownerIds: getOwnerIds(project),
+    },
+    project.id
+  );
+}
+
 function addInternalProject(memberId = "") {
   const member = state.members.find((item) => item.id === memberId);
   openEntry("internalProject", {
@@ -710,6 +747,19 @@ function editInternalProject(projectId) {
       editingId: project.id,
     },
     project.id
+  );
+}
+
+function editRequest(requestId) {
+  const request = state.requests.find((item) => item.id === requestId);
+  if (!request) return;
+  openEntry(
+    "requestEdit",
+    {
+      ...request,
+      assigneeIds: getAssigneeIds(request),
+    },
+    request.id
   );
 }
 
@@ -871,8 +921,11 @@ function renderProjects() {
                 editing
                   ? `<td>${
                       project.source === "手动项目"
-                        ? `<button class="danger-button" data-delete-project="${project.id}" type="button">删除</button>`
-                        : '<span class="cell-note">在需求池维护</span>'
+                        ? `<div class="table-actions">
+                            <button class="inline-edit" data-edit-project="${project.id}" type="button">修改</button>
+                            <button class="danger-button" data-delete-project="${project.id}" type="button">删除</button>
+                          </div>`
+                        : `<button class="inline-edit" data-edit-request="${project.requestId}" type="button">修改需求</button>`
                     }</td>`
                   : ""
               }
@@ -886,6 +939,18 @@ function renderProjects() {
   document.querySelectorAll("[data-delete-project]").forEach((button) => {
     button.addEventListener("click", () => {
       deleteProject(button.dataset.deleteProject);
+    });
+  });
+
+  document.querySelectorAll("[data-edit-project]").forEach((button) => {
+    button.addEventListener("click", () => {
+      editProject(button.dataset.editProject);
+    });
+  });
+
+  document.querySelectorAll("[data-edit-request]").forEach((button) => {
+    button.addEventListener("click", () => {
+      editRequest(button.dataset.editRequest);
     });
   });
 }
@@ -1328,7 +1393,7 @@ function openEntry(type, defaults = {}, editingId = "") {
   const configs = {
     project: {
       kicker: "项目跟进",
-      title: "新增项目",
+      title: `${editingId ? "修改" : "新增"}项目`,
       fields: [
         ["name", "项目名称", "text"],
         ["type", "内容类型", "text"],
@@ -1365,6 +1430,22 @@ function openEntry(type, defaults = {}, editingId = "") {
         ["units", "需求数量", "number"],
         ["docUrl", "需求文档链接", "url", "full"],
         ["due", "期望交付日期", "date"],
+        ["note", "备注", "text", "full"],
+      ],
+    },
+    requestEdit: {
+      kicker: "需求池",
+      title: "修改需求",
+      fields: [
+        ["requester", "需求人", "text"],
+        ["channel", "使用渠道", "channel"],
+        ["requestTopic", "需求内容", "text"],
+        ["type", "内容类型", "requestType"],
+        ["assigneeIds", "制作人", "memberMulti"],
+        ["units", "需求数量", "number"],
+        ["status", "状态", "requestStatus"],
+        ["due", "期望交付日期", "date"],
+        ["docUrl", "需求文档链接", "url", "full"],
         ["note", "备注", "text", "full"],
       ],
     },
@@ -1466,13 +1547,14 @@ function saveEntry() {
 
   if ("units" in entry) entry.units = Number(entry.units || 0);
   if ("day" in entry) entry.day = Number(entry.day || 1);
-  if (activeEntryType === "request") {
+  if (activeEntryType === "request" || activeEntryType === "requestEdit") {
     entry.requester = entry.requester.trim() || "未署名";
     entry.requestTopic = entry.requestTopic.trim() || entry.type || "视频";
     entry.name = `${entry.requester}${entry.channel}${entry.requestTopic}需求`;
-    entry.assigneeIds = [];
+    entry.assigneeIds = activeEntryType === "requestEdit" ? formData.getAll("assigneeIds") : [];
     entry.assigneeId = "";
-    entry.status = "待评估";
+    entry.assigneeId = entry.assigneeIds[0] || "";
+    entry.status = activeEntryType === "requestEdit" ? entry.status || "待评估" : "待评估";
     entry.urgency = getAutoUrgency(entry);
     entry.weekKey = ["已接收", "排期中", "已完成"].includes(entry.status) ? state.week.currentWeekKey : "";
     if (entry.status === "归档历史") entry.archivedAt = state.week.currentWeekKey;
@@ -1490,7 +1572,13 @@ function saveEntry() {
     entry.ownerId = entry.ownerIds[0] || "";
   }
 
-  if (activeEntryType === "project") state.projects.push(entry);
+  if (activeEntryType === "project") {
+    if (activeEntryId) {
+      state.projects = state.projects.map((project) => (project.id === activeEntryId ? entry : project));
+    } else {
+      state.projects.push(entry);
+    }
+  }
   if (activeEntryType === "internalProject") {
     if (activeEntryId) {
       state.projects = state.projects.map((project) => (project.id === activeEntryId ? entry : project));
@@ -1499,6 +1587,9 @@ function saveEntry() {
     }
   }
   if (activeEntryType === "request") state.requests.push(entry);
+  if (activeEntryType === "requestEdit") {
+    state.requests = state.requests.map((request) => (request.id === activeEntryId ? entry : request));
+  }
   if (activeEntryType === "event") state.events.push(entry);
 
   saveState();
