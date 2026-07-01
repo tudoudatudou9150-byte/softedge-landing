@@ -529,7 +529,8 @@ td.past-day,
 }
 
 td.past-day .status-tag,
-.calendar-cell.past-day .calendar-event {
+.calendar-cell.past-day .calendar-event,
+.calendar-cell.past-day .calendar-project {
   filter: grayscale(0.6);
   opacity: 0.72;
 }
@@ -1096,6 +1097,14 @@ tr:last-child td {
 .calendar-event:nth-child(3n) {
   border-left-color: var(--mint);
   background: linear-gradient(135deg, var(--green-soft), #f8fffb);
+}
+
+.calendar-project {
+  border-left-color: var(--mint);
+  background:
+    linear-gradient(135deg, rgba(234, 255, 246, 0.95), rgba(255, 252, 246, 0.95)),
+    linear-gradient(135deg, rgba(34, 185, 129, 0.14), transparent);
+  box-shadow: 0 8px 16px rgba(34, 185, 129, 0.1);
 }
 
 .calendar-event strong {

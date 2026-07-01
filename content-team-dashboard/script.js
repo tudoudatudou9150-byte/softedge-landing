@@ -1,6 +1,6 @@
 const STORAGE_KEY = "content-team-dashboard-preview";
 const EDIT_PASSWORD = "content2026";
-const DATA_VERSION = 12;
+const DATA_VERSION = 13;
 const CURRENT_WEEK_KEY = getWeekKey(new Date());
 const SUPABASE_URL = "https://vcxetbbpigobkekqzmoy.supabase.co";
 const SUPABASE_KEY = "sb_publishable_n6nVRvL9i5DgDUeEMp-ikw_TszSFoiF";
@@ -438,6 +438,12 @@ function getWeekdayDate(day) {
   return date;
 }
 
+function getWeekdayDateInState(sourceState, day) {
+  const date = new Date(`${sourceState.week?.currentWeekKey || CURRENT_WEEK_KEY}T00:00:00`);
+  date.setDate(date.getDate() + Number(day || 1) - 1);
+  return date;
+}
+
 function isPastWorkday(day) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -445,22 +451,38 @@ function isPastWorkday(day) {
 }
 
 function isPastWorkdayInState(sourceState, day) {
-  const date = new Date(`${sourceState.week?.currentWeekKey || CURRENT_WEEK_KEY}T00:00:00`);
-  date.setDate(date.getDate() + Number(day || 1) - 1);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  return date < today;
+  return getWeekdayDateInState(sourceState, day) < today;
+}
+
+function isTodayWorkdayInState(sourceState, day) {
+  const date = getWeekdayDateInState(sourceState, day);
+  const today = new Date();
+  date.setHours(0, 0, 0, 0);
+  today.setHours(0, 0, 0, 0);
+  return date.getTime() === today.getTime();
 }
 
 function applyAutomaticProjectCompletion(nextState = state) {
   nextState.projects = (nextState.projects || []).map((project) => {
     const projectDay = Number(project.day || 0);
     if (!projectDay || project.status === "已完成") return project;
-    if (!isPastWorkdayInState(nextState, projectDay)) return project;
+    if (isPastWorkdayInState(nextState, projectDay)) {
+      return {
+        ...project,
+        status: "已完成",
+        completedAt: project.completedAt || getDateKey(new Date()),
+      };
+    }
+    if (isTodayWorkdayInState(nextState, projectDay) && ["", "待开始"].includes(project.status || "")) {
+      return {
+        ...project,
+        status: "进行中",
+      };
+    }
     return {
       ...project,
-      status: "已完成",
-      completedAt: project.completedAt || getDateKey(new Date()),
     };
   });
 }
@@ -568,6 +590,13 @@ function eventNotes(memberId, day) {
     .filter((event) => event.memberId === memberId && Number(event.day) === day)
     .map((event) => `${event.type} -${event.units}：${event.note}`)
     .join("；");
+}
+
+function scheduledProjectsByMemberDay(memberId, day) {
+  return state.projects.filter((project) => {
+    const projectDay = Number(project.day || 0);
+    return projectDay === Number(day) && getOwnerIds(project).includes(memberId);
+  });
 }
 
 function getCapacity() {
@@ -1263,13 +1292,14 @@ function renderEvents() {
         .map((day, index) => {
           const dayNumber = index + 1;
           const events = state.events.filter((event) => event.memberId === member.id && Number(event.day) === dayNumber);
+          const projects = scheduledProjectsByMemberDay(member.id, dayNumber);
           return `
             <div class="calendar-cell ${isPastWorkday(dayNumber) ? "past-day" : ""}" data-member="${member.id}" data-day="${dayNumber}">
               <div class="calendar-events">
                 ${
-                  events.length
-                    ? events
-                        .map(
+                  events.length || projects.length
+                    ? [
+                        ...events.map(
                           (event) => `
                             <article class="calendar-event">
                               <strong>${event.type}</strong>
@@ -1282,9 +1312,23 @@ function renderEvents() {
                               }
                             </article>
                           `
-                        )
-                        .join("")
-                    : '<p class="empty-slot">暂无占用</p>'
+                        ),
+                        ...projects.map(
+                          (project) => `
+                            <article class="calendar-event calendar-project">
+                              <strong>${project.name}</strong>
+                              <span>排 ${project.units} 条 · ${project.status}</span>
+                              <p>${project.type || "自主安排"} · ${project.risk || "无备注"}</p>
+                              ${
+                                editing
+                                  ? `<button class="event-delete-button" data-edit-calendar-project="${project.id}" type="button">修改</button>`
+                                  : ""
+                              }
+                            </article>
+                          `
+                        ),
+                      ].join("")
+                    : '<p class="empty-slot">暂无安排</p>'
                 }
               </div>
               ${
@@ -1315,6 +1359,12 @@ function renderEvents() {
         memberId: button.dataset.addEventMember,
         day: button.dataset.addEventDay,
       });
+    });
+  });
+
+  document.querySelectorAll("[data-edit-calendar-project]").forEach((button) => {
+    button.addEventListener("click", () => {
+      editInternalProject(button.dataset.editCalendarProject);
     });
   });
 
