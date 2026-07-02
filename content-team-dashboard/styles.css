@@ -472,7 +472,11 @@ select {
 }
 
 .status-full,
-.status-risk,
+.status-risk {
+  background: #f2efe5;
+  color: #75633d;
+}
+
 .status-blocked {
   background: var(--red-soft);
   color: var(--red);
@@ -1090,8 +1094,8 @@ tr:last-child td {
 }
 
 .calendar-event:nth-child(2n) {
-  border-left-color: var(--coral);
-  background: linear-gradient(135deg, var(--coral-soft), #fffaf7);
+  border-left-color: var(--sun);
+  background: linear-gradient(135deg, var(--amber-soft), #fffdf7);
 }
 
 .calendar-event:nth-child(3n) {

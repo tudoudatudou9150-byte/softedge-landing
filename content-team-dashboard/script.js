@@ -562,6 +562,19 @@ function projectDayLabel(project) {
   return project.due || "未填写日期";
 }
 
+function getProjectStatusClass(status) {
+  const statusClassMap = {
+    待开始: "status-info",
+    进行中: "status-progress",
+    待反馈: "status-tight",
+    待交付: "status-progress",
+    已完成: "status-done",
+    阻塞: "status-blocked",
+  };
+
+  return statusClassMap[status] || "status-info";
+}
+
 function projectUnitsByMemberDay(memberId, day) {
   const planningDays = getPlanningDays();
   return getScheduledItems()
@@ -916,15 +929,6 @@ function renderSchedule() {
 }
 
 function renderProjects() {
-  const statusClassMap = {
-    待开始: "status-info",
-    进行中: "status-progress",
-    待反馈: "status-tight",
-    待交付: "status-progress",
-    已完成: "status-done",
-    阻塞: "status-blocked",
-  };
-
   selectors.projectTable.innerHTML = `
     <thead>
       <tr>
@@ -945,7 +949,7 @@ function renderProjects() {
               <td><strong>${project.name}</strong><p class="cell-note">${project.type} · ${project.priority}优先级 · ${project.source}</p></td>
               <td>${project.ownerIds ? project.ownerIds.map(memberName).join("、") || "未分配" : memberName(project.ownerId)}</td>
               <td>${project.units}</td>
-              <td><span class="status-tag ${statusClassMap[project.status] || "status-info"}">${project.status}</span></td>
+              <td><span class="status-tag ${getProjectStatusClass(project.status)}">${project.status}</span></td>
               <td>${project.due}</td>
               <td>${project.risk}</td>
               ${
@@ -1052,7 +1056,7 @@ function renderInternalColumn(title, projects, memberId) {
                         }
                       </div>
                       <p>${project.type || "自主安排"} · ${project.units || 0} 条 · ${projectDayLabel(project)}</p>
-                      <span class="status-tag status-info">${project.status || "待开始"}</span>
+                      <span class="status-tag ${getProjectStatusClass(project.status)}">${project.status || "待开始"}</span>
                     </article>
                   `
                 )
@@ -1319,7 +1323,8 @@ function renderEvents() {
                           (project) => `
                             <article class="calendar-event calendar-project">
                               <strong>${project.name}</strong>
-                              <span>排 ${project.units} 条 · ${project.status}</span>
+                              <span>排 ${project.units} 条</span>
+                              <span class="status-tag ${getProjectStatusClass(project.status)}">${project.status || "待开始"}</span>
                               <p>${project.type || "自主安排"} · ${project.risk || "无备注"}</p>
                               ${
                                 editing
