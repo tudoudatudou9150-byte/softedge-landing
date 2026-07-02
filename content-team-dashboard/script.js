@@ -1,6 +1,6 @@
 const STORAGE_KEY = "content-team-dashboard-preview";
 const EDIT_PASSWORD = "content2026";
-const DATA_VERSION = 13;
+const DATA_VERSION = 14;
 const CURRENT_WEEK_KEY = getWeekKey(new Date());
 const SUPABASE_URL = "https://vcxetbbpigobkekqzmoy.supabase.co";
 const SUPABASE_KEY = "sb_publishable_n6nVRvL9i5DgDUeEMp-ikw_TszSFoiF";
@@ -467,18 +467,20 @@ function isTodayWorkdayInState(sourceState, day) {
 function applyAutomaticProjectCompletion(nextState = state) {
   nextState.projects = (nextState.projects || []).map((project) => {
     const projectDay = Number(project.day || 0);
-    if (!projectDay || project.status === "已完成") return project;
+    if (!projectDay || project.manualStatusOverride || project.status === "已完成") return project;
     if (isPastWorkdayInState(nextState, projectDay)) {
       return {
         ...project,
         status: "已完成",
         completedAt: project.completedAt || getDateKey(new Date()),
+        automatedStatus: "past-completed",
       };
     }
     if (isTodayWorkdayInState(nextState, projectDay) && ["", "待开始"].includes(project.status || "")) {
       return {
         ...project,
         status: "进行中",
+        automatedStatus: "today-progress",
       };
     }
     return {
@@ -1623,6 +1625,12 @@ function saveEntry() {
   }
 
   if (activeEntryType === "project") {
+    const previousProject = state.projects.find((project) => project.id === activeEntryId);
+    if (previousProject) {
+      entry.completedAt = previousProject.completedAt || "";
+      entry.automatedStatus = previousProject.automatedStatus || "";
+      entry.manualStatusOverride = previousProject.manualStatusOverride || previousProject.status !== entry.status;
+    }
     if (activeEntryId) {
       state.projects = state.projects.map((project) => (project.id === activeEntryId ? entry : project));
     } else {
@@ -1630,6 +1638,12 @@ function saveEntry() {
     }
   }
   if (activeEntryType === "internalProject") {
+    const previousProject = state.projects.find((project) => project.id === activeEntryId);
+    if (previousProject) {
+      entry.completedAt = previousProject.completedAt || "";
+      entry.automatedStatus = previousProject.automatedStatus || "";
+      entry.manualStatusOverride = previousProject.manualStatusOverride || previousProject.status !== entry.status;
+    }
     if (activeEntryId) {
       state.projects = state.projects.map((project) => (project.id === activeEntryId ? entry : project));
     } else {
