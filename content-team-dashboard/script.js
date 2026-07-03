@@ -774,6 +774,7 @@ function addInternalProject(memberId = "") {
     status: "待开始",
     priority: "中",
     risk: "自主安排",
+    notifyFeishu: true,
   });
 }
 
@@ -789,6 +790,7 @@ function editInternalProject(projectId) {
       ownerIds,
       ownerName: ownerIds.map(memberName).join("、") || "未分配",
       editingId: project.id,
+      notifyFeishu: true,
     },
     project.id
   );
@@ -1474,6 +1476,7 @@ function openEntry(type, defaults = {}, editingId = "") {
         ["status", "状态", "projectStatus"],
         ["priority", "优先级", "text"],
         ["risk", "备注", "text", "full"],
+        ["notifyFeishu", "保存后发送飞书提醒", "checkbox", "full"],
       ],
     },
     request: {
@@ -1574,6 +1577,15 @@ function renderField([name, label, type, width]) {
     return renderSelect(name, label, dayLabels.slice(0, state.week.workdays).map((day, index) => `${index + 1}:${day}`), className);
   }
 
+  if (type === "checkbox") {
+    return `
+      <label class="checkbox-field ${className}">
+        <input name="${name}" type="checkbox" ${defaultValue ? "checked" : ""} />
+        <span>${label}</span>
+      </label>
+    `;
+  }
+
   return `
     <label class="${className}">${label}
       <input name="${name}" type="${type}" value="${defaultValue}" ${type === "number" ? 'min="0"' : ""} />
@@ -1597,9 +1609,36 @@ function renderSelect(name, label, options, className) {
   `;
 }
 
+async function sendFeishuReminder(project, action) {
+  try {
+    const response = await fetch("/api/feishu", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action,
+        title: project.name,
+        owners: getOwnerIds(project).map(memberName).join("、") || "未分配",
+        day: projectDayLabel(project),
+        units: project.units,
+        status: project.status,
+        note: project.risk || "无备注",
+      }),
+    });
+
+    if (!response.ok) throw new Error("飞书接口返回异常");
+    showToast("飞书提醒已发送");
+  } catch (error) {
+    console.error(error);
+    showToast("已保存，但飞书提醒发送失败");
+  }
+}
+
 function saveEntry() {
   const formData = new FormData(document.querySelector("#entry-form"));
   const entry = Object.fromEntries(formData.entries());
+  const wasEditing = Boolean(activeEntryId);
+  const shouldNotifyFeishu = activeEntryType === "internalProject" && formData.get("notifyFeishu") === "on";
+  delete entry.notifyFeishu;
   entry.id = activeEntryId || `${activeEntryType}-${Date.now()}`;
 
   if ("units" in entry) entry.units = Number(entry.units || 0);
@@ -1662,10 +1701,14 @@ function saveEntry() {
   if (activeEntryType === "event") state.events.push(entry);
 
   saveState();
+  const savedEntry = activeEntryType === "internalProject" ? state.projects.find((project) => project.id === entry.id) || entry : entry;
   selectors.entryDialog.close();
   activeEntryId = "";
   render();
   showToast("已保存，产能已重新计算");
+  if (shouldNotifyFeishu) {
+    sendFeishuReminder(savedEntry, wasEditing ? "更新" : "新增");
+  }
 }
 
 selectors.editToggle.addEventListener("click", () => {

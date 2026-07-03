@@ -1262,6 +1262,29 @@ body.editing .panel.edit-only {
   grid-column: 1 / -1;
 }
 
+.checkbox-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(34, 185, 129, 0.22);
+  border-radius: 7px;
+  background: rgba(223, 248, 237, 0.45);
+  padding: 11px 12px;
+}
+
+.checkbox-field input {
+  width: 18px;
+  min-height: 18px;
+  margin: 0;
+  accent-color: var(--green);
+}
+
+.checkbox-field span {
+  color: #31544a;
+  font-size: 13px;
+  font-weight: 900;
+}
+
 .quick-layout {
   display: grid;
   grid-template-columns: 1fr 1fr;
