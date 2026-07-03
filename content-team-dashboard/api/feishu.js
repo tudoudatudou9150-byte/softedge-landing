@@ -8,7 +8,7 @@ function textFromPayload(payload) {
   const note = payload.note || "无备注";
 
   return [
-    `内容排期提醒｜${action}安排`,
+    `工作排期提醒｜${action}安排`,
     `安排内容：${title}`,
     `制作人：${owners}`,
     `安排日期：${day}`,
