@@ -1,11 +1,20 @@
 const STORAGE_KEY = "content-team-dashboard-preview";
 const EDIT_PASSWORD = "content2026";
-const DATA_VERSION = 14;
+const DATA_VERSION = 15;
 const CURRENT_WEEK_KEY = getWeekKey(new Date());
 const SUPABASE_URL = "https://vcxetbbpigobkekqzmoy.supabase.co";
 const SUPABASE_KEY = "sb_publishable_n6nVRvL9i5DgDUeEMp-ikw_TszSFoiF";
 const SUPABASE_TABLE = "content_dashboard_state";
 const REMOTE_STATE_ID = "main";
+const MATERIAL_CAMPAIGN_PRODUCTS = [
+  { id: "q3air", name: "Q3air", target: 500 },
+  { id: "q3air-pro", name: "Q3airPro", target: 350 },
+  { id: "q3-vegskin", name: "Q3Vegskin", target: 300 },
+  { id: "o3hue", name: "O3hue", target: 300 },
+  { id: "q3wind", name: "Q3wind", target: 100 },
+  { id: "o3air", name: "O3air", target: 150 },
+];
+const MATERIAL_CAMPAIGN_TARGET = MATERIAL_CAMPAIGN_PRODUCTS.reduce((total, product) => total + product.target, 0);
 
 const defaultState = {
   version: DATA_VERSION,
@@ -109,6 +118,17 @@ const defaultState = {
     },
   ],
   weeklyArchives: [],
+  materialCampaign: {
+    startDate: "2026-07-01",
+    endDate: "2026-10-15",
+    target: MATERIAL_CAMPAIGN_TARGET,
+    products: MATERIAL_CAMPAIGN_PRODUCTS.map((product) => ({
+      ...product,
+      imageDone: 0,
+      videoDone: 0,
+      note: "",
+    })),
+  },
 };
 
 let state = loadState();
@@ -131,6 +151,8 @@ const selectors = {
   statusTitle: document.querySelector("#status-title"),
   statusCopy: document.querySelector("#status-copy"),
   capacityProgress: document.querySelector("#capacity-progress"),
+  materialHelper: document.querySelector("#material-helper"),
+  materialDashboard: document.querySelector("#material-dashboard"),
   metricGrid: document.querySelector("#metric-grid"),
   scheduleTable: document.querySelector("#schedule-table"),
   projectTable: document.querySelector("#project-table"),
@@ -276,6 +298,7 @@ function migrateState(parsed) {
   migrated.members = parsed.members || defaultState.members;
   migrated.events = parsed.events || defaultState.events;
   migrated.weeklyArchives = parsed.weeklyArchives || [];
+  migrated.materialCampaign = normalizeMaterialCampaign(parsed.materialCampaign);
   migrated.projects = (parsed.projects || defaultState.projects).map((project) => {
     const ownerIds = project.ownerIds || (project.ownerId ? [project.ownerId] : []);
     return {
@@ -297,6 +320,33 @@ function migrateState(parsed) {
   applyAutomaticProjectCompletion(migrated);
   autoResetWeeklySchedule(migrated);
   return migrated;
+}
+
+function normalizeMaterialCampaign(campaign = {}) {
+  const sourceProducts = campaign.products || [];
+  const products = sourceProducts.length
+    ? sourceProducts
+    : MATERIAL_CAMPAIGN_PRODUCTS.map((product) => ({
+        ...product,
+        imageDone: 0,
+        videoDone: 0,
+        note: "",
+      }));
+  const normalizedProducts = products.map((product, index) => ({
+    id: product.id || `material-${Date.now()}-${index}`,
+    name: product.name || "未命名品类",
+    target: Number(product.target || 0),
+    imageDone: Number(product.imageDone || 0),
+    videoDone: Number(product.videoDone || 0),
+    note: product.note || "",
+  }));
+
+  return {
+    ...defaultState.materialCampaign,
+    ...campaign,
+    target: normalizedProducts.reduce((total, product) => total + Number(product.target || 0), 0),
+    products: normalizedProducts,
+  };
 }
 
 function getDateKey(date) {
@@ -652,6 +702,7 @@ function render() {
   renderWeekEditor();
   renderMembers();
   renderHero();
+  renderMaterialCampaign();
   renderMetrics();
   renderSchedule();
   renderProjects();
@@ -659,6 +710,236 @@ function render() {
   renderRequests();
   renderEvents();
   renderHistory();
+}
+
+function getCampaignDays() {
+  const campaign = state.materialCampaign;
+  const start = new Date(`${campaign.startDate}T00:00:00`);
+  const end = new Date(`${campaign.endDate}T00:00:00`);
+  const today = new Date();
+  start.setHours(0, 0, 0, 0);
+  end.setHours(0, 0, 0, 0);
+  today.setHours(0, 0, 0, 0);
+
+  const total = Math.max(Math.round((end - start) / 86400000) + 1, 1);
+  const elapsed = Math.min(Math.max(Math.round((today - start) / 86400000) + 1, 0), total);
+  return { total, elapsed, remaining: Math.max(total - elapsed, 0) };
+}
+
+function getMaterialTotals() {
+  const products = state.materialCampaign.products || [];
+  const imageDone = products.reduce((total, product) => total + Number(product.imageDone || 0), 0);
+  const videoDone = products.reduce((total, product) => total + Number(product.videoDone || 0), 0);
+  const done = imageDone + videoDone;
+  const target = products.reduce((total, product) => total + Number(product.target || 0), 0);
+  state.materialCampaign.target = target;
+  return {
+    imageDone,
+    videoDone,
+    done,
+    target,
+    remaining: Math.max(target - done, 0),
+    percent: target > 0 ? Math.min((done / target) * 100, 100) : 0,
+  };
+}
+
+function formatPercent(value) {
+  return `${Math.round(value)}%`;
+}
+
+function escapeAttribute(value = "") {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
+function renderMaterialTrack(imageDone, videoDone, target) {
+  const imagePercent = target > 0 ? Math.min((Number(imageDone || 0) / target) * 100, 100) : 0;
+  const videoPercent = target > 0 ? Math.min((Number(videoDone || 0) / target) * 100, Math.max(100 - imagePercent, 0)) : 0;
+  return `
+    <div class="material-track" aria-label="素材完成进度">
+      <div class="material-segment material-image" style="width: ${imagePercent}%"></div>
+      <div class="material-segment material-video" style="width: ${videoPercent}%"></div>
+    </div>
+  `;
+}
+
+function renderMaterialCampaign() {
+  if (!selectors.materialDashboard) return;
+  state.materialCampaign = normalizeMaterialCampaign(state.materialCampaign);
+  const campaign = state.materialCampaign;
+  const totals = getMaterialTotals();
+  const days = getCampaignDays();
+  const dayPercent = days.total > 0 ? (days.elapsed / days.total) * 100 : 0;
+  if (selectors.materialHelper) {
+    selectors.materialHelper.textContent = `周期：7月1日 - 10月15日，目标 ${totals.target} 条`;
+  }
+
+  selectors.materialDashboard.innerHTML = `
+    <div class="material-overview">
+      <article class="material-total-card">
+        <div class="material-total-head">
+          <div>
+            <span>总达成进度</span>
+            <strong>${totals.done} / ${totals.target}</strong>
+          </div>
+          <b>${formatPercent(totals.percent)}</b>
+        </div>
+        ${renderMaterialTrack(totals.imageDone, totals.videoDone, totals.target)}
+        <div class="material-legend">
+          <span><i class="material-image-dot"></i>图片 ${totals.imageDone} 条</span>
+          <span><i class="material-video-dot"></i>视频 ${totals.videoDone} 条</span>
+          <span>剩余 ${totals.remaining} 条</span>
+        </div>
+      </article>
+      <article class="material-date-card">
+        <span>周期进度</span>
+        <strong>${days.elapsed} / ${days.total} 天</strong>
+        <div class="period-track">
+          <i style="width: ${Math.min(dayPercent, 100)}%"></i>
+        </div>
+        <small>距离 10月15日 还剩 ${days.remaining} 天</small>
+      </article>
+    </div>
+
+    <div class="material-toolbar ${editing ? "" : "readonly"}">
+      <span>${editing ? "可修改品类、目标数、图片/视频完成数和备注" : "进入编辑模式后可修改专项数据"}</span>
+      ${
+        editing
+          ? `<button class="secondary-button" id="add-material-product" type="button">新增品类</button>`
+          : ""
+      }
+    </div>
+
+    <div class="material-product-grid">
+      ${campaign.products
+        .map((product) => {
+          const imageDone = Number(product.imageDone || 0);
+          const videoDone = Number(product.videoDone || 0);
+          const done = imageDone + videoDone;
+          const remaining = Math.max(product.target - done, 0);
+          const percent = product.target > 0 ? Math.min((done / product.target) * 100, 100) : 0;
+          const status = percent >= 100 ? "已完成" : percent >= 70 ? "接近完成" : percent >= 35 ? "推进中" : "待提速";
+          const statusClass = percent >= 100 ? "status-done" : percent >= 70 ? "status-good" : percent >= 35 ? "status-progress" : "status-info";
+
+          return `
+            <article class="material-product-card">
+              <header>
+                <div>
+                  <h3>${product.name}</h3>
+                  <p>目标 ${product.target} 条，剩余 ${remaining} 条</p>
+                </div>
+                <span class="status-tag ${statusClass}">${status}</span>
+              </header>
+              ${renderMaterialTrack(imageDone, videoDone, product.target)}
+              <div class="material-product-stats">
+                <span><strong>${done}</strong>已完成</span>
+                <span><strong>${formatPercent(percent)}</strong>达成率</span>
+                <span><strong>${imageDone}</strong>图片</span>
+                <span><strong>${videoDone}</strong>视频</span>
+              </div>
+              ${
+                editing
+                  ? `<div class="material-edit-grid">
+                      <label>产品名称
+                        <input data-material-field="name" data-material-id="${product.id}" type="text" value="${escapeAttribute(product.name)}" />
+                      </label>
+                      <label>目标数量
+                        <input data-material-field="target" data-material-id="${product.id}" type="number" min="0" value="${product.target}" />
+                      </label>
+                      <label>图片完成
+                        <input data-material-field="imageDone" data-material-id="${product.id}" type="number" min="0" value="${imageDone}" />
+                      </label>
+                      <label>视频完成
+                        <input data-material-field="videoDone" data-material-id="${product.id}" type="number" min="0" value="${videoDone}" />
+                      </label>
+                      <label class="full">备注
+                        <input data-material-field="note" data-material-id="${product.id}" type="text" value="${escapeAttribute(product.note || "")}" placeholder="例如：本周主拍视频，图片待补" />
+                      </label>
+                      <button class="danger-button material-delete-button" data-delete-material="${product.id}" type="button">删除品类</button>
+                    </div>`
+                  : product.note
+                    ? `<p class="material-note">${product.note}</p>`
+                    : ""
+              }
+            </article>
+          `;
+        })
+        .join("")}
+    </div>
+  `;
+
+  selectors.materialDashboard.querySelectorAll("[data-material-field]").forEach((input) => {
+    input.addEventListener("change", () => {
+      updateMaterialProduct(input.dataset.materialId, input.dataset.materialField, input.value);
+    });
+  });
+
+  selectors.materialDashboard.querySelector("#add-material-product")?.addEventListener("click", addMaterialProduct);
+
+  selectors.materialDashboard.querySelectorAll("[data-delete-material]").forEach((button) => {
+    button.addEventListener("click", () => {
+      deleteMaterialProduct(button.dataset.deleteMaterial);
+    });
+  });
+}
+
+function updateMaterialProduct(productId, field, value) {
+  const product = state.materialCampaign.products.find((item) => item.id === productId);
+  if (!product) return;
+
+  if (field === "name") {
+    product.name = value.trim() || "未命名品类";
+  } else if (field === "note") {
+    product.note = value.trim();
+  } else if (field === "target") {
+    const done = Number(product.imageDone || 0) + Number(product.videoDone || 0);
+    const nextTarget = Math.max(Number(value || 0), done);
+    product.target = nextTarget;
+    if (nextTarget !== Number(value || 0)) {
+      showToast(`${product.name} 目标数不能低于已完成 ${done} 条`);
+    }
+  } else {
+    const otherField = field === "imageDone" ? "videoDone" : "imageDone";
+    const otherValue = Number(product[otherField] || 0);
+    const nextValue = Math.max(Number(value || 0), 0);
+    const cappedValue = Math.min(nextValue, Math.max(product.target - otherValue, 0));
+    product[field] = cappedValue;
+    if (cappedValue !== nextValue) {
+      showToast(`${product.name} 图片和视频合计不能超过目标 ${product.target} 条`);
+    }
+  }
+
+  saveState();
+  render();
+  showToast("素材进度已更新");
+}
+
+function addMaterialProduct() {
+  state.materialCampaign.products.push({
+    id: `material-${Date.now()}`,
+    name: "新品类",
+    target: 0,
+    imageDone: 0,
+    videoDone: 0,
+    note: "",
+  });
+  saveState();
+  render();
+  showToast("已新增素材品类");
+}
+
+function deleteMaterialProduct(productId) {
+  const product = state.materialCampaign.products.find((item) => item.id === productId);
+  if (!product) return;
+  if (!window.confirm(`确认删除「${product.name}」吗？这会同时移除它的图片和视频进度。`)) return;
+
+  state.materialCampaign.products = state.materialCampaign.products.filter((item) => item.id !== productId);
+  saveState();
+  render();
+  showToast("素材品类已删除");
 }
 
 function renderWeekEditor() {
