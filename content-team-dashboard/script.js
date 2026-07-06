@@ -373,6 +373,7 @@ function getWeekKey(date) {
 function autoResetWeeklySchedule(nextState) {
   if (nextState.week.currentWeekKey === CURRENT_WEEK_KEY) return;
 
+  const persistentMaterialCampaign = normalizeMaterialCampaign(nextState.materialCampaign);
   archiveWeekSchedule(nextState, nextState.week.currentWeekKey);
   nextState.projects = [];
   nextState.events = [];
@@ -397,8 +398,9 @@ function autoResetWeeklySchedule(nextState) {
 
     return request;
   });
+  nextState.materialCampaign = persistentMaterialCampaign;
   nextState.week.currentWeekKey = CURRENT_WEEK_KEY;
-  nextState.week.note = "已自动进入新一周，未完成需求保留在需求池。";
+  nextState.week.note = "已自动进入新一周，未完成需求保留在需求池；新机素材专项不会随周排期清零。";
 }
 
 function archiveWeekSchedule(nextState, weekKey) {
