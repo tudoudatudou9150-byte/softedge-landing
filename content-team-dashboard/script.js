@@ -253,10 +253,6 @@ async function initializeRemoteSync() {
       render();
       syncReady = true;
       setSyncStatus("online", "已同步");
-
-      if (state.week.currentWeekKey === CURRENT_WEEK_KEY) {
-        queueRemoteSave();
-      }
       return;
     }
 
@@ -318,7 +314,6 @@ function migrateState(parsed) {
     };
   });
   applyAutomaticProjectCompletion(migrated);
-  autoResetWeeklySchedule(migrated);
   return migrated;
 }
 
