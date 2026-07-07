@@ -164,6 +164,9 @@ const formatPackSize = (order) => {
   if (productName.includes("Loop Fan")) {
     return `${order.pack_size || 1} ${Number(order.pack_size || 1) === 1 ? "fan" : "fans"}`;
   }
+  if (productName.includes("Under-Sink Pull-Out Organizer")) {
+    return `${order.pack_size} cm`;
+  }
   return `${order.pack_size} pcs`;
 };
 
@@ -440,11 +443,12 @@ const isCheckoutResumeUrl = (value = "") => {
 
 const continueToPayPalCheckout = async ({ session, profile, address }) => {
   const pending = readPendingCheckout() || {};
-  const allowedStyles = ["L-Shaped", "T-Shaped", "Round", "Icy Cooling Loop Fan - White", "Icy Cooling Loop Fan - Black"];
+  const allowedStyles = ["L-Shaped", "T-Shaped", "Round", "Icy Cooling Loop Fan - White", "Icy Cooling Loop Fan - Black", "Under-Sink Pull-Out Organizer - White", "Under-Sink Pull-Out Organizer - Black"];
   const style = allowedStyles.includes(pending.style) ? pending.style : "L-Shaped";
   const isFan = style.startsWith("Icy Cooling Loop Fan");
-  const allowedPackSizes = isFan ? [1] : [1, 4, 8, 16, 20];
-  const fallbackPackSize = isFan ? 1 : 16;
+  const isOrganizer = style.startsWith("Under-Sink Pull-Out Organizer");
+  const allowedPackSizes = isFan ? [1] : isOrganizer ? [29, 33, 39, 41, 48] : [1, 4, 8, 16, 20];
+  const fallbackPackSize = isFan ? 1 : isOrganizer ? 29 : 16;
   const packSize = allowedPackSizes.includes(Number(pending.packSize)) ? Number(pending.packSize) : fallbackPackSize;
 
   const response = await fetch("/api/create-paypal-order", {

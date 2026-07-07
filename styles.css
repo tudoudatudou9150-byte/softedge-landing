@@ -1142,6 +1142,14 @@ img {
   text-align: center;
 }
 
+.quantity-options.size-options {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.quantity-options.size-options button {
+  min-height: 96px;
+}
+
 .fan-package-option button {
   min-height: 94px;
 }

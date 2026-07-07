@@ -15,6 +15,9 @@ const formatPackSize = (order) => {
   if (productName.includes("Loop Fan")) {
     return `${order.pack_size} ${Number(order.pack_size) === 1 ? "fan" : "fans"}`;
   }
+  if (productName.includes("Under-Sink Pull-Out Organizer")) {
+    return `${order.pack_size} cm`;
+  }
   return `${order.pack_size} pcs`;
 };
 

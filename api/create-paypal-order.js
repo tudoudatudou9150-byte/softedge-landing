@@ -21,6 +21,22 @@ const cornerShippingAndDuties = {
   20: "0.00"
 };
 
+const organizerPrices = {
+  29: "24.99",
+  33: "27.99",
+  39: "31.99",
+  41: "36.99",
+  48: "39.99"
+};
+
+const organizerShippingAndDuties = {
+  29: "0.00",
+  33: "0.00",
+  39: "0.00",
+  41: "0.00",
+  48: "0.00"
+};
+
 const productCatalog = {
   "L-Shaped": {
     name: "Nubohome L-Shaped Rounded Corner Guard",
@@ -51,6 +67,18 @@ const productCatalog = {
     unit: "fan",
     prices: { 1: "39.00" },
     shipping: { 1: "0.00" }
+  },
+  "Under-Sink Pull-Out Organizer - White": {
+    name: "Nubohome Under-Sink Pull-Out Organizer - White",
+    unit: "cm",
+    prices: organizerPrices,
+    shipping: organizerShippingAndDuties
+  },
+  "Under-Sink Pull-Out Organizer - Black": {
+    name: "Nubohome Under-Sink Pull-Out Organizer - Black",
+    unit: "cm",
+    prices: organizerPrices,
+    shipping: organizerShippingAndDuties
   }
 };
 
