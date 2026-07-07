@@ -227,6 +227,7 @@ async function fetchRemoteState() {
 }
 
 async function upsertRemoteState(nextState) {
+  const mergedState = await mergeRemoteSafeguards(nextState);
   const response = await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}?on_conflict=id`, {
     method: "POST",
     headers: remoteHeaders({
@@ -235,11 +236,38 @@ async function upsertRemoteState(nextState) {
     }),
     body: JSON.stringify({
       id: REMOTE_STATE_ID,
-      data: nextState,
+      data: mergedState,
     }),
   });
 
   if (!response.ok) throw new Error(`同步共享数据失败：${response.status}`);
+}
+
+async function mergeRemoteSafeguards(nextState) {
+  try {
+    const remoteState = await fetchRemoteState();
+    if (!remoteState) return nextState;
+
+    const localMaterialTotal = materialDoneTotal(nextState.materialCampaign);
+    const remoteMaterialTotal = materialDoneTotal(remoteState.materialCampaign);
+    if (localMaterialTotal === 0 && remoteMaterialTotal > 0) {
+      return {
+        ...nextState,
+        materialCampaign: remoteState.materialCampaign,
+      };
+    }
+  } catch (error) {
+    console.warn("跳过远程保护合并", error);
+  }
+
+  return nextState;
+}
+
+function materialDoneTotal(campaign = {}) {
+  return (campaign.products || []).reduce(
+    (total, product) => total + Number(product.imageDone || 0) + Number(product.videoDone || 0),
+    0
+  );
 }
 
 async function initializeRemoteSync() {
