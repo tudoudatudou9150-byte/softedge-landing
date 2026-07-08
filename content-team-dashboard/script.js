@@ -276,11 +276,15 @@ async function initializeRemoteSync() {
   try {
     const remoteState = await fetchRemoteState();
     if (remoteState) {
-      state = migrateState(remoteState);
+      const migrationMeta = {};
+      state = migrateState(remoteState, migrationMeta);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
       render();
       syncReady = true;
       setSyncStatus("online", "已同步");
+      if (migrationMeta.autoStatusChanged) {
+        queueRemoteSave();
+      }
       return;
     }
 
@@ -311,7 +315,7 @@ function queueRemoteSave() {
   }, 250);
 }
 
-function migrateState(parsed) {
+function migrateState(parsed, meta = {}) {
   const migrated = structuredClone(defaultState);
   Object.assign(migrated, parsed);
   migrated.version = DATA_VERSION;
@@ -341,7 +345,7 @@ function migrateState(parsed) {
       weekKey: request.weekKey ?? (["已接收", "排期中", "已完成"].includes(request.status) ? migrated.week.currentWeekKey : ""),
     };
   });
-  applyAutomaticProjectCompletion(migrated);
+  meta.autoStatusChanged = applyAutomaticProjectCompletion(migrated);
   return migrated;
 }
 
@@ -540,10 +544,12 @@ function isTodayWorkdayInState(sourceState, day) {
 }
 
 function applyAutomaticProjectCompletion(nextState = state) {
+  let changed = false;
   nextState.projects = (nextState.projects || []).map((project) => {
     const projectDay = Number(project.day || 0);
     if (!projectDay || project.manualStatusOverride || project.status === "已完成") return project;
     if (isPastWorkdayInState(nextState, projectDay)) {
+      changed = true;
       return {
         ...project,
         status: "已完成",
@@ -552,6 +558,7 @@ function applyAutomaticProjectCompletion(nextState = state) {
       };
     }
     if (isTodayWorkdayInState(nextState, projectDay) && ["", "待开始"].includes(project.status || "")) {
+      changed = true;
       return {
         ...project,
         status: "进行中",
@@ -562,6 +569,7 @@ function applyAutomaticProjectCompletion(nextState = state) {
       ...project,
     };
   });
+  return changed;
 }
 
 function getAutoUrgency(request) {
