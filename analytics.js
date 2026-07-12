@@ -1,12 +1,43 @@
 (function () {
   const key = "nubohome_visitor_id";
 
+  const safeStorage = {
+    get(name) {
+      try {
+        return localStorage.getItem(name);
+      } catch {
+        return "";
+      }
+    },
+    set(name, value) {
+      try {
+        localStorage.setItem(name, value);
+      } catch {
+        document.cookie = `${encodeURIComponent(name)}=${encodeURIComponent(value)}; Max-Age=31536000; Path=/; SameSite=Lax`;
+      }
+    }
+  };
+
+  const readCookie = (name) => {
+    const encodedName = `${encodeURIComponent(name)}=`;
+    const rawValue = document.cookie
+      .split(";")
+      .map((item) => item.trim())
+      .find((item) => item.startsWith(encodedName))
+      ?.slice(encodedName.length) || "";
+    try {
+      return decodeURIComponent(rawValue);
+    } catch {
+      return "";
+    }
+  };
+
   const getVisitorId = () => {
-    const existing = localStorage.getItem(key);
+    const existing = safeStorage.get(key) || readCookie(key);
     if (existing) return existing;
 
-    const id = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-    localStorage.setItem(key, id);
+    const id = window.crypto?.randomUUID ? window.crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    safeStorage.set(key, id);
     return id;
   };
 

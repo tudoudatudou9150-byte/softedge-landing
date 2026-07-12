@@ -1,3 +1,5 @@
+const crypto = require("crypto");
+
 const readJsonBody = (req) => new Promise((resolve, reject) => {
   let body = "";
   req.on("data", (chunk) => {
@@ -35,6 +37,14 @@ const supabaseRequest = async (path, options = {}) => {
 
 const cleanText = (value, maxLength) => String(value || "").trim().slice(0, maxLength);
 
+const getFallbackVisitorId = (req) => {
+  const forwardedFor = String(req.headers["x-forwarded-for"] || "").split(",")[0].trim();
+  const ip = forwardedFor || req.socket?.remoteAddress || "";
+  const userAgent = String(req.headers["user-agent"] || "");
+  if (!ip && !userAgent) return "";
+  return `server-${crypto.createHash("sha256").update(`${ip}|${userAgent}`).digest("hex").slice(0, 40)}`;
+};
+
 module.exports = async (req, res) => {
   if (req.method !== "POST") {
     res.status(405).json({ error: "Method not allowed" });
@@ -43,7 +53,7 @@ module.exports = async (req, res) => {
 
   try {
     const body = await readJsonBody(req);
-    const visitorId = cleanText(body.visitorId, 80);
+    const visitorId = cleanText(body.visitorId, 80) || getFallbackVisitorId(req);
     const path = cleanText(body.path, 240);
 
     if (!visitorId || !path) {
