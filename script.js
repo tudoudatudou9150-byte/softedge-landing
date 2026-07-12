@@ -35,7 +35,7 @@ const loginNextUrl = `login.html?next=${encodeURIComponent(addressNextUrl)}`;
 
 const getSelectedQuantity = () => {
   const selected = document.querySelector(".quantity-options button.selected");
-  return selected?.dataset.qty || "16";
+  return selected?.dataset.apiPack || selected?.dataset.qty || "16";
 };
 
 const getSelectedQuantityOption = () => document.querySelector(".quantity-options button.selected");
@@ -52,6 +52,7 @@ const formatMoney = (usdValue) => {
 
 const getSelectedUnit = (quantity) => {
   const selectedQuantity = getSelectedQuantityOption();
+  if (selectedQuantity?.dataset.unitLabel) return selectedQuantity.dataset.unitLabel;
   const singular = selectedQuantity?.dataset.unitSingular || "pc";
   const plural = selectedQuantity?.dataset.unitPlural || "pcs";
   return String(quantity) === "1" ? singular : plural;
@@ -123,7 +124,7 @@ const applyPendingCheckout = () => {
   const pendingStyle = document.querySelector(`.style-options .style-option[data-style="${pending.style}"]`);
   if (pendingStyle) pendingStyle.click();
 
-  const pendingQuantity = document.querySelector(`.quantity-options button[data-qty="${pending.packSize}"]`);
+  const pendingQuantity = document.querySelector(`.quantity-options button[data-api-pack="${pending.packSize}"], .quantity-options button[data-qty="${pending.packSize}"]`);
   if (pendingQuantity) pendingQuantity.click();
 };
 
@@ -132,19 +133,21 @@ const updateSelectedPlan = () => {
 
   const quantity = getSelectedQuantity();
   const unit = getSelectedUnit(quantity);
-  selectedPlan.textContent = `${selectedStyle} / ${quantity} ${unit}`;
+  const planLabel = getSelectedQuantityOption()?.dataset.planLabel;
+  selectedPlan.textContent = planLabel ? `${selectedStyle} / ${planLabel}` : `${selectedStyle} / ${quantity} ${unit}`;
 };
 
 const updatePaypalCheckout = () => {
   const selectedQuantity = getSelectedQuantityOption();
   if (!selectedQuantity || !paypalItemName || !paypalAmount) return;
 
-  const quantity = selectedQuantity.dataset.qty || "16";
+  const quantity = selectedQuantity.dataset.apiPack || selectedQuantity.dataset.qty || "16";
   const unit = getSelectedUnit(quantity);
   const { convertedItemPrice, convertedShippingFee } = getSelectedTotals();
+  const planLabel = selectedQuantity.dataset.planLabel || `${quantity} ${unit}`;
 
   const productName = productTitle?.textContent || `${selectedStyle} Corner Guard`;
-  paypalItemName.value = `Nubohome ${productName} / ${quantity} ${unit}`;
+  paypalItemName.value = `Nubohome ${productName} / ${planLabel}`;
   paypalAmount.value = convertedItemPrice.toFixed(2);
 
   if (paypalCurrency) {
@@ -216,6 +219,11 @@ quantityOptions.forEach((option) => {
     const price = option.dataset.price;
     const compare = option.dataset.compare;
 
+    if (productImage && option.dataset.image) {
+      productImage.src = option.dataset.image;
+      productImage.alt = option.dataset.alt || "";
+    }
+
     if (selectedPlan && selectedPrice && selectedShipping && quantity && price && compare) {
       updateSelectedPlan();
       updateDisplayedPricing();
@@ -226,7 +234,7 @@ quantityOptions.forEach((option) => {
 
 const buildCheckoutPayload = async () => {
   const selectedQuantity = getSelectedQuantityOption();
-  const quantity = Number(selectedQuantity?.dataset.qty || "16");
+  const quantity = Number(selectedQuantity?.dataset.apiPack || selectedQuantity?.dataset.qty || "16");
   const sessionResult = await checkoutSupabase.auth.getSession();
   const session = sessionResult.data.session;
 

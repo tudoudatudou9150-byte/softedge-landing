@@ -37,6 +37,32 @@ const organizerShippingAndDuties = {
   48: "0.00"
 };
 
+const fridgeOrganizerPrices = {
+  111: "12.99",
+  112: "12.99",
+  121: "14.99",
+  122: "14.99",
+  123: "14.99",
+  124: "14.99",
+  231: "15.99",
+  232: "15.99",
+  233: "15.99"
+};
+
+const fridgeOrganizerLabels = {
+  111: "11 clips + Small Matte Red Box",
+  112: "11 clips + Small Matte Cream Box",
+  121: "12 clips + Large Red Box + Small Matte Red Box",
+  122: "12 clips + Large Cream Box + Small Matte Red Box",
+  123: "12 clips + Large Red Box + Small Matte Cream Box",
+  124: "12 clips + Large Cream Box + Small Matte Cream Box",
+  231: "23 clips + Small Matte Red Box + Small Matte Cream Box",
+  232: "23 clips + 2 Small Matte Red Boxes",
+  233: "23 clips + 2 Small Matte Cream Boxes"
+};
+
+const freeShippingFor = (prices) => Object.fromEntries(Object.keys(prices).map((key) => [key, "0.00"]));
+
 const productCatalog = {
   "L-Shaped": {
     name: "Nubohome L-Shaped Rounded Corner Guard",
@@ -79,6 +105,13 @@ const productCatalog = {
     unit: "cm",
     prices: organizerPrices,
     shipping: organizerShippingAndDuties
+  },
+  "Magnetic Fridge Organizer": {
+    name: "Nubohome Magnetic Fridge Organizer",
+    unit: "set",
+    prices: fridgeOrganizerPrices,
+    shipping: freeShippingFor(fridgeOrganizerPrices),
+    variantLabels: fridgeOrganizerLabels
   }
 };
 
@@ -172,6 +205,7 @@ module.exports = async (req, res) => {
     const paypalAmount = addMoney(paypalItemAmount, paypalShippingAmount);
     const productName = product.name;
     const unitLabel = packSize === 1 && product.unit === "fan" ? "fan" : product.unit;
+    const variantLabel = product.variantLabels?.[packSize] || `${packSize} ${unitLabel}`;
 
     const createdOrders = await supabaseRequest("orders", {
       method: "POST",
@@ -206,7 +240,7 @@ module.exports = async (req, res) => {
           {
             custom_id: localOrder.id,
             invoice_id: orderNumber,
-            description: `${productName} / ${packSize} ${unitLabel}${Number(shippingAmount) > 0 ? " / shipping & duties included" : " / free shipping"}`,
+            description: `${productName} / ${variantLabel}${Number(shippingAmount) > 0 ? " / shipping & duties included" : " / free shipping"}`,
             amount: {
               currency_code: pricingContext.currencyCode,
               value: paypalAmount,
@@ -224,7 +258,7 @@ module.exports = async (req, res) => {
             items: [
               {
                 name: productName,
-                description: `${packSize} ${unitLabel}`,
+                description: variantLabel,
                 quantity: "1",
                 unit_amount: {
                   currency_code: pricingContext.currencyCode,

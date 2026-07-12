@@ -159,6 +159,18 @@ const formatAddress = (address) => {
   ].filter(Boolean).join(", ");
 };
 
+const fridgeOrganizerLabels = {
+  111: "11 clips + Small Matte Red Box",
+  112: "11 clips + Small Matte Cream Box",
+  121: "12 clips + Large Red Box + Small Matte Red Box",
+  122: "12 clips + Large Cream Box + Small Matte Red Box",
+  123: "12 clips + Large Red Box + Small Matte Cream Box",
+  124: "12 clips + Large Cream Box + Small Matte Cream Box",
+  231: "23 clips + Small Matte Red Box + Small Matte Cream Box",
+  232: "23 clips + 2 Small Matte Red Boxes",
+  233: "23 clips + 2 Small Matte Cream Boxes"
+};
+
 const formatPackSize = (order) => {
   const productName = String(order.product_name || order.product || "");
   if (productName.includes("Loop Fan")) {
@@ -166,6 +178,9 @@ const formatPackSize = (order) => {
   }
   if (productName.includes("Under-Sink Pull-Out Organizer")) {
     return `${order.pack_size} cm`;
+  }
+  if (productName.includes("Magnetic Fridge Organizer")) {
+    return fridgeOrganizerLabels[order.pack_size] || `${order.pack_size} set`;
   }
   return `${order.pack_size} pcs`;
 };
