@@ -7,12 +7,12 @@ const SUPABASE_KEY = "sb_publishable_n6nVRvL9i5DgDUeEMp-ikw_TszSFoiF";
 const SUPABASE_TABLE = "content_dashboard_state";
 const REMOTE_STATE_ID = "main";
 const MATERIAL_CAMPAIGN_PRODUCTS = [
-  { id: "q3air", name: "Q3air", target: 500 },
-  { id: "q3air-pro", name: "Q3airPro", target: 350 },
-  { id: "q3-vegskin", name: "Q3Vegskin", target: 300 },
-  { id: "o3hue", name: "O3hue", target: 300 },
-  { id: "q3wind", name: "Q3wind", target: 100 },
-  { id: "o3air", name: "O3air", target: 150 },
+  { id: "q3air", name: "Q3air", target: 500, videoTarget: 280, imageTarget: 220 },
+  { id: "q3air-pro", name: "Q3airPro", target: 350, videoTarget: 200, imageTarget: 150 },
+  { id: "q3-vegskin", name: "Q3Vegskin", target: 300, videoTarget: 120, imageTarget: 180 },
+  { id: "o3hue", name: "O3hue", target: 300, videoTarget: 110, imageTarget: 190 },
+  { id: "q3wind", name: "Q3wind", target: 100, videoTarget: 25, imageTarget: 75 },
+  { id: "o3air", name: "O3air", target: 150, videoTarget: 43, imageTarget: 107 },
 ];
 const MATERIAL_CAMPAIGN_TARGET = MATERIAL_CAMPAIGN_PRODUCTS.reduce((total, product) => total + product.target, 0);
 
@@ -362,14 +362,22 @@ function normalizeMaterialCampaign(campaign = {}) {
         videoDone: 0,
         note: "",
       }));
-  const normalizedProducts = products.map((product, index) => ({
-    id: product.id || `material-${Date.now()}-${index}`,
-    name: product.name || "未命名品类",
-    target: Number(product.target || 0),
-    imageDone: Number(product.imageDone || 0),
-    videoDone: Number(product.videoDone || 0),
-    note: product.note || "",
-  }));
+  const normalizedProducts = products.map((product, index) => {
+    const preset = MATERIAL_CAMPAIGN_PRODUCTS.find((item) => item.id === product.id || item.name === product.name) || {};
+    const fallbackTarget = Number(product.target ?? preset.target ?? 0);
+    const imageTarget = Number(product.imageTarget ?? preset.imageTarget ?? Math.max(fallbackTarget - Number(product.videoTarget ?? preset.videoTarget ?? 0), 0));
+    const videoTarget = Number(product.videoTarget ?? preset.videoTarget ?? Math.max(fallbackTarget - imageTarget, 0));
+    return {
+      id: product.id || `material-${Date.now()}-${index}`,
+      name: product.name || preset.name || "未命名品类",
+      target: imageTarget + videoTarget,
+      imageTarget,
+      videoTarget,
+      imageDone: Number(product.imageDone || 0),
+      videoDone: Number(product.videoDone || 0),
+      note: product.note || "",
+    };
+  });
 
   return {
     ...defaultState.materialCampaign,
@@ -766,15 +774,21 @@ function getMaterialTotals() {
   const products = state.materialCampaign.products || [];
   const imageDone = products.reduce((total, product) => total + Number(product.imageDone || 0), 0);
   const videoDone = products.reduce((total, product) => total + Number(product.videoDone || 0), 0);
+  const imageTarget = products.reduce((total, product) => total + Number(product.imageTarget || 0), 0);
+  const videoTarget = products.reduce((total, product) => total + Number(product.videoTarget || 0), 0);
   const done = imageDone + videoDone;
-  const target = products.reduce((total, product) => total + Number(product.target || 0), 0);
+  const target = imageTarget + videoTarget;
   state.materialCampaign.target = target;
   return {
     imageDone,
     videoDone,
+    imageTarget,
+    videoTarget,
     done,
     target,
     remaining: Math.max(target - done, 0),
+    imageRemaining: Math.max(imageTarget - imageDone, 0),
+    videoRemaining: Math.max(videoTarget - videoDone, 0),
     percent: target > 0 ? Math.min((done / target) * 100, 100) : 0,
   };
 }
@@ -825,8 +839,8 @@ function renderMaterialCampaign() {
         </div>
         ${renderMaterialTrack(totals.imageDone, totals.videoDone, totals.target)}
         <div class="material-legend">
-          <span><i class="material-image-dot"></i>图片 ${totals.imageDone} 条</span>
-          <span><i class="material-video-dot"></i>视频 ${totals.videoDone} 条</span>
+          <span><i class="material-image-dot"></i>图片 ${totals.imageDone} / ${totals.imageTarget} 条</span>
+          <span><i class="material-video-dot"></i>视频 ${totals.videoDone} / ${totals.videoTarget} 条</span>
           <span>剩余 ${totals.remaining} 条</span>
         </div>
       </article>
@@ -841,7 +855,7 @@ function renderMaterialCampaign() {
     </div>
 
     <div class="material-toolbar ${editing ? "" : "readonly"}">
-      <span>${editing ? "可修改品类、目标数、图片/视频完成数和备注" : "进入编辑模式后可修改专项数据"}</span>
+      <span>${editing ? "可修改品类、图片/视频目标、完成数和备注" : "进入编辑模式后可修改专项数据"}</span>
       ${
         editing
           ? `<button class="secondary-button" id="add-material-product" type="button">新增品类</button>`
@@ -854,9 +868,12 @@ function renderMaterialCampaign() {
         .map((product) => {
           const imageDone = Number(product.imageDone || 0);
           const videoDone = Number(product.videoDone || 0);
+          const imageTarget = Number(product.imageTarget || 0);
+          const videoTarget = Number(product.videoTarget || 0);
+          const target = imageTarget + videoTarget;
           const done = imageDone + videoDone;
-          const remaining = Math.max(product.target - done, 0);
-          const percent = product.target > 0 ? Math.min((done / product.target) * 100, 100) : 0;
+          const remaining = Math.max(target - done, 0);
+          const percent = target > 0 ? Math.min((done / target) * 100, 100) : 0;
           const status = percent >= 100 ? "已完成" : percent >= 70 ? "接近完成" : percent >= 35 ? "推进中" : "待提速";
           const statusClass = percent >= 100 ? "status-done" : percent >= 70 ? "status-good" : percent >= 35 ? "status-progress" : "status-info";
 
@@ -865,16 +882,16 @@ function renderMaterialCampaign() {
               <header>
                 <div>
                   <h3>${product.name}</h3>
-                  <p>目标 ${product.target} 条，剩余 ${remaining} 条</p>
+                  <p>总目标 ${target} 条，视频 ${videoTarget} 条，图片 ${imageTarget} 条，剩余 ${remaining} 条</p>
                 </div>
                 <span class="status-tag ${statusClass}">${status}</span>
               </header>
-              ${renderMaterialTrack(imageDone, videoDone, product.target)}
+              ${renderMaterialTrack(imageDone, videoDone, target)}
               <div class="material-product-stats">
                 <span><strong>${done}</strong>已完成</span>
                 <span><strong>${formatPercent(percent)}</strong>达成率</span>
-                <span><strong>${imageDone}</strong>图片</span>
-                <span><strong>${videoDone}</strong>视频</span>
+                <span><strong>${imageDone}/${imageTarget}</strong>图片</span>
+                <span><strong>${videoDone}/${videoTarget}</strong>视频</span>
               </div>
               ${
                 editing
@@ -882,8 +899,11 @@ function renderMaterialCampaign() {
                       <label>产品名称
                         <input data-material-field="name" data-material-id="${product.id}" type="text" value="${escapeAttribute(product.name)}" />
                       </label>
-                      <label>目标数量
-                        <input data-material-field="target" data-material-id="${product.id}" type="number" min="0" value="${product.target}" />
+                      <label>视频目标
+                        <input data-material-field="videoTarget" data-material-id="${product.id}" type="number" min="0" value="${videoTarget}" />
+                      </label>
+                      <label>图片目标
+                        <input data-material-field="imageTarget" data-material-id="${product.id}" type="number" min="0" value="${imageTarget}" />
                       </label>
                       <label>图片完成
                         <input data-material-field="imageDone" data-material-id="${product.id}" type="number" min="0" value="${imageDone}" />
@@ -930,21 +950,22 @@ function updateMaterialProduct(productId, field, value) {
     product.name = value.trim() || "未命名品类";
   } else if (field === "note") {
     product.note = value.trim();
-  } else if (field === "target") {
-    const done = Number(product.imageDone || 0) + Number(product.videoDone || 0);
-    const nextTarget = Math.max(Number(value || 0), done);
-    product.target = nextTarget;
+  } else if (field === "imageTarget" || field === "videoTarget") {
+    const doneField = field === "imageTarget" ? "imageDone" : "videoDone";
+    const nextTarget = Math.max(Number(value || 0), Number(product[doneField] || 0));
+    product[field] = nextTarget;
+    product.target = Number(product.imageTarget || 0) + Number(product.videoTarget || 0);
     if (nextTarget !== Number(value || 0)) {
-      showToast(`${product.name} 目标数不能低于已完成 ${done} 条`);
+      showToast(`${product.name} 目标数不能低于已完成数量`);
     }
   } else {
-    const otherField = field === "imageDone" ? "videoDone" : "imageDone";
-    const otherValue = Number(product[otherField] || 0);
+    const targetField = field === "imageDone" ? "imageTarget" : "videoTarget";
+    const targetValue = Number(product[targetField] || 0);
     const nextValue = Math.max(Number(value || 0), 0);
-    const cappedValue = Math.min(nextValue, Math.max(product.target - otherValue, 0));
+    const cappedValue = Math.min(nextValue, targetValue);
     product[field] = cappedValue;
     if (cappedValue !== nextValue) {
-      showToast(`${product.name} 图片和视频合计不能超过目标 ${product.target} 条`);
+      showToast(`${product.name} 完成数不能超过对应目标 ${targetValue} 条`);
     }
   }
 
@@ -958,6 +979,8 @@ function addMaterialProduct() {
     id: `material-${Date.now()}`,
     name: "新品类",
     target: 0,
+    imageTarget: 0,
+    videoTarget: 0,
     imageDone: 0,
     videoDone: 0,
     note: "",
