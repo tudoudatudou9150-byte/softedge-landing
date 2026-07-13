@@ -282,7 +282,7 @@ async function initializeRemoteSync() {
       render();
       syncReady = true;
       setSyncStatus("online", "已同步");
-      if (migrationMeta.autoStatusChanged) {
+      if (migrationMeta.autoStatusChanged || migrationMeta.weeklyReset) {
         queueRemoteSave();
       }
       return;
@@ -320,9 +320,6 @@ function migrateState(parsed, meta = {}) {
   Object.assign(migrated, parsed);
   migrated.version = DATA_VERSION;
   migrated.week = { ...defaultState.week, ...(parsed.week || {}) };
-  if (migrated.week.currentWeekKey === getPreviousDateKey(CURRENT_WEEK_KEY)) {
-    migrated.week.currentWeekKey = CURRENT_WEEK_KEY;
-  }
   migrated.members = parsed.members || defaultState.members;
   migrated.events = parsed.events || defaultState.events;
   migrated.weeklyArchives = parsed.weeklyArchives || [];
@@ -345,7 +342,13 @@ function migrateState(parsed, meta = {}) {
       weekKey: request.weekKey ?? (["已接收", "排期中", "已完成"].includes(request.status) ? migrated.week.currentWeekKey : ""),
     };
   });
-  meta.autoStatusChanged = applyAutomaticProjectCompletion(migrated);
+  const autoStatusChanged = applyAutomaticProjectCompletion(migrated);
+  const shouldResetWeek = migrated.week.currentWeekKey && migrated.week.currentWeekKey !== CURRENT_WEEK_KEY;
+  if (shouldResetWeek) {
+    autoResetWeeklySchedule(migrated);
+    meta.weeklyReset = true;
+  }
+  meta.autoStatusChanged = autoStatusChanged;
   return migrated;
 }
 
