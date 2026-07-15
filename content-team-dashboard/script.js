@@ -583,6 +583,14 @@ function applyAutomaticProjectCompletion(nextState = state) {
   return changed;
 }
 
+function getManualStatusOverride(previousProject, nextStatus) {
+  if (!previousProject) return false;
+  if (previousProject.status === nextStatus) return Boolean(previousProject.manualStatusOverride);
+  if (previousProject.automatedStatus === "today-progress" && nextStatus === "进行中") return false;
+  if (previousProject.automatedStatus === "past-completed" && nextStatus === "已完成") return false;
+  return true;
+}
+
 function getAutoUrgency(request) {
   if (daysUntilDue(request.due) <= 1) return "紧急";
   if (request.channel === "官网") return "优先";
@@ -2013,7 +2021,7 @@ function saveEntry() {
     if (previousProject) {
       entry.completedAt = previousProject.completedAt || "";
       entry.automatedStatus = previousProject.automatedStatus || "";
-      entry.manualStatusOverride = previousProject.manualStatusOverride || previousProject.status !== entry.status;
+      entry.manualStatusOverride = getManualStatusOverride(previousProject, entry.status);
     }
     if (activeEntryId) {
       state.projects = state.projects.map((project) => (project.id === activeEntryId ? entry : project));
@@ -2026,7 +2034,7 @@ function saveEntry() {
     if (previousProject) {
       entry.completedAt = previousProject.completedAt || "";
       entry.automatedStatus = previousProject.automatedStatus || "";
-      entry.manualStatusOverride = previousProject.manualStatusOverride || previousProject.status !== entry.status;
+      entry.manualStatusOverride = getManualStatusOverride(previousProject, entry.status);
     }
     if (activeEntryId) {
       state.projects = state.projects.map((project) => (project.id === activeEntryId ? entry : project));
