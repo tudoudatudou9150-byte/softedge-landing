@@ -1469,6 +1469,7 @@ function renderRequests() {
                       .map((status) => `<option ${status === request.status ? "selected" : ""}>${status}</option>`)
                       .join("")}
                   </select>
+                  <button class="inline-edit" data-edit-request="${request.id}" type="button">修改需求</button>
                   <button class="danger-button" data-delete-request="${request.id}" type="button">删除需求</button>`
                 : ""
             }
@@ -1503,6 +1504,12 @@ function renderRequests() {
   document.querySelectorAll("[data-delete-request]").forEach((button) => {
     button.addEventListener("click", () => {
       deleteRequest(button.dataset.deleteRequest);
+    });
+  });
+
+  document.querySelectorAll(".request-list [data-edit-request]").forEach((button) => {
+    button.addEventListener("click", () => {
+      editRequest(button.dataset.editRequest);
     });
   });
 }
@@ -1623,6 +1630,11 @@ function updateRequestStatus(request, status) {
 
   if (["已接收", "排期中", "已完成"].includes(status)) {
     request.weekKey = state.week.currentWeekKey;
+  }
+
+  if (status === "已完成") {
+    request.completedAt = request.completedAt || getDateKey(new Date());
+    request.archivedAt = request.archivedAt || state.week.currentWeekKey;
   }
 
   if (status === "归档历史") {
@@ -2000,8 +2012,7 @@ function saveEntry() {
     entry.assigneeId = entry.assigneeIds[0] || "";
     entry.status = activeEntryType === "requestEdit" ? entry.status || "待评估" : "待评估";
     entry.urgency = getAutoUrgency(entry);
-    entry.weekKey = ["已接收", "排期中", "已完成"].includes(entry.status) ? state.week.currentWeekKey : "";
-    if (entry.status === "归档历史") entry.archivedAt = state.week.currentWeekKey;
+    updateRequestStatus(entry, entry.status);
   }
 
   if (activeEntryType === "project") {
