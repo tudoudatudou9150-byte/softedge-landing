@@ -66,6 +66,7 @@ function parseJsonResponse(content) {
 }
 
 function buildUserPrompt(input) {
+  const count = Math.max(1, Math.min(Number(input.count) || 5, 15));
   const modeGuide = {
     "全域扩散": "覆盖尽可能多的不同情绪角度、不同人物视角、不同场景,横向扩散。",
     "前3秒钩子": "每一条都极度强化0-3秒钩子的视觉冲击或好奇心,标题就是钩子。",
@@ -95,7 +96,7 @@ ${input.mode} —— ${modeGuide[input.mode] || ""}
 ${input.preferences?.length ? input.preferences.join(" / ") : "无特殊偏好"}
 
 # 数量
-请生成 ${input.count} 条创意。`;
+请生成 ${count} 条创意。`;
 }
 
 async function callDeepSeek(systemPrompt, userPrompt) {
