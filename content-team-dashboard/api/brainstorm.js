@@ -87,13 +87,13 @@ ${input.preferences?.length ? input.preferences.join(" / ") : "无特殊偏好"}
 请生成 ${input.count} 条创意。`;
 }
 
-async function callOpenAI(systemPrompt, userPrompt) {
-  const apiKey = process.env.OPENAI_API_KEY;
-  const model = process.env.OPENAI_MODEL || "gpt-4.1-mini";
+async function callDeepSeek(systemPrompt, userPrompt) {
+  const apiKey = process.env.DEEPSEEK_API_KEY;
+  const model = process.env.DEEPSEEK_MODEL || "deepseek-v4-flash";
 
-  if (!apiKey) throw new Error("OPENAI_API_KEY 未配置");
+  if (!apiKey) throw new Error("DEEPSEEK_API_KEY 未配置");
 
-  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+  const res = await fetch("https://api.deepseek.com/chat/completions", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -127,11 +127,13 @@ async function callOpenAI(systemPrompt, userPrompt) {
     } catch {
       errorCode = "";
     }
-    if (errorCode === "billing_not_active") throw new Error("OpenAI API 账单未激活, 请先在 OpenAI 平台开通 API 账单");
-    if (res.status === 429) throw new Error("OpenAI 请求过于频繁或额度受限, 请稍后再试");
-    if (res.status === 401) throw new Error("OpenAI API Key 无效或未配置正确");
-    if (res.status === 402) throw new Error("OpenAI 账户额度不足, 请检查账单设置");
-    throw new Error(`OpenAI 接口错误 ${res.status}: ${text.slice(0, 200)}`);
+    const lowerText = text.toLowerCase();
+    if (res.status === 401) throw new Error("DeepSeek API Key 无效或未配置正确");
+    if (res.status === 402 || lowerText.includes("insufficient") || lowerText.includes("balance")) {
+      throw new Error("DeepSeek 账户余额不足, 请先在 DeepSeek 开放平台充值");
+    }
+    if (res.status === 429) throw new Error("DeepSeek 请求过于频繁或额度受限, 请稍后再试");
+    throw new Error(`DeepSeek 接口错误 ${res.status}: ${text.slice(0, 200)}`);
   }
 
   const data = await res.json();
@@ -207,7 +209,7 @@ export default async function handler(request, response) {
       throw new Error(`未知的action: ${action}`);
     }
 
-    response.status(200).json(await callOpenAI(systemPrompt, userPrompt));
+    response.status(200).json(await callDeepSeek(systemPrompt, userPrompt));
   } catch (error) {
     console.error("brainstorm error", error);
     response.status(500).json({ error: error.message || "AI请求失败" });
