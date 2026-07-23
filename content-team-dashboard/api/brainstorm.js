@@ -51,7 +51,8 @@ function buildSystemPrompt() {
 6. prompt: 一段可直接喂给AI视频生成工具的英文prompt, 包含镜头(close-up/handheld/POV)、光线、风格、产品如何出现。
 7. scores: hook/conversion/feasibility 各1-10, 真实评估, 不要全打9。
 
-只输出符合给定schema的JSON, 不要解释。`;
+只输出严格 JSON, 不要解释。JSON 格式必须是:
+{"ideas":[{"id":"idea-001","category":"创意大类","title":"10-22字中文标题","hook":"0-3秒钩子的具体画面+台词","logic":"1-2句转化逻辑","scores":{"hook":8,"conversion":8,"feasibility":8},"tags":["标签1","标签2"],"script":["0-2s | 画面描述 + 台词/字幕"],"prompt":"English video generation prompt"}]}`;
 }
 
 function buildUserPrompt(input) {
@@ -105,17 +106,9 @@ async function callDeepSeek(systemPrompt, userPrompt) {
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
       ],
-      tools: [
-        {
-          type: "function",
-          function: {
-            name: "return_ideas",
-            description: "返回创意列表",
-            parameters: IDEA_SCHEMA,
-          },
-        },
-      ],
-      tool_choice: { type: "function", function: { name: "return_ideas" } },
+      response_format: { type: "json_object" },
+      thinking: { type: "disabled" },
+      max_tokens: 4096,
     }),
   });
 
@@ -137,11 +130,13 @@ async function callDeepSeek(systemPrompt, userPrompt) {
   }
 
   const data = await res.json();
-  const call = data.choices?.[0]?.message?.tool_calls?.[0];
-  if (!call) throw new Error("AI未返回结构化结果");
+  const content = data.choices?.[0]?.message?.content;
+  if (!content) throw new Error("AI未返回结构化结果");
 
   try {
-    return JSON.parse(call.function.arguments);
+    const parsed = JSON.parse(content);
+    if (!Array.isArray(parsed?.ideas)) throw new Error("ideas missing");
+    return parsed;
   } catch {
     throw new Error("AI返回的JSON无法解析");
   }
