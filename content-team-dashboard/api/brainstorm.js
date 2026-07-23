@@ -121,7 +121,14 @@ async function callOpenAI(systemPrompt, userPrompt) {
 
   if (!res.ok) {
     const text = await res.text();
-    if (res.status === 429) throw new Error("OpenAI 请求过于频繁, 请稍后再试");
+    let errorCode = "";
+    try {
+      errorCode = JSON.parse(text)?.error?.code || "";
+    } catch {
+      errorCode = "";
+    }
+    if (errorCode === "billing_not_active") throw new Error("OpenAI API 账单未激活, 请先在 OpenAI 平台开通 API 账单");
+    if (res.status === 429) throw new Error("OpenAI 请求过于频繁或额度受限, 请稍后再试");
     if (res.status === 401) throw new Error("OpenAI API Key 无效或未配置正确");
     if (res.status === 402) throw new Error("OpenAI 账户额度不足, 请检查账单设置");
     throw new Error(`OpenAI 接口错误 ${res.status}: ${text.slice(0, 200)}`);
